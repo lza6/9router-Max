@@ -55,6 +55,12 @@ export {
   getDisabledModels, getDisabledByProvider, disableModels, enableModels,
 } from "./repos/disabledModelsRepo.js";
 
+// User skills (save_skill: 用户自定义技能 + 使用强化)
+export {
+  getUserSkills, getUserSkillById,
+  createUserSkill, updateUserSkill, deleteUserSkill, recordSkillUse,
+} from "./repos/skillsRepo.js";
+
 // Usage
 export {
   statsEmitter, trackPendingRequest, getActiveRequests,

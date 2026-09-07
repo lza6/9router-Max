@@ -13,7 +13,7 @@
   
   [![npm](https://img.shields.io/npm/v/9router.svg)](https://www.npmjs.com/package/9router)
   [![Downloads](https://img.shields.io/npm/dm/9router.svg)](https://www.npmjs.com/package/9router)
-  [![License](https://img.shields.io/npm/l/9router.svg)](https://github.com/decolua/9router/blob/main/LICENSE)
+  [![License](https://img.shields.io/npm/l/9router.svg)](https://github.com/lza6/9router-Max/blob/main/LICENSE)
   
   [🚀 快速开始](#-quick-start) • [💡 特性](#-key-features) • [📖 设置](#-setup) • [🌐 网站](https://9router.com)
 </div>
@@ -359,6 +359,7 @@ PORT=20128 HOSTNAME=0.0.0.0 NEXT_PUBLIC_BASE_URL=http://localhost:20128 npm run 
 | 🔄 **自动 Token 刷新** | OAuth token 自动刷新 |需手动重新登录 |
 | 🎨 **自定义组合** | 创建无限模型组合 | 根据需求定制回退策略 |
 | 📝 **请求日志** | 调试模式包含完整请求/响应日志 | 轻松排查问题 |
+| 🧩 **技能管理** | 保存/管理自定义技能，越用置信度越高 | 让 AI 更懂你的工作流 |
 | 💾 **云端同步** | 跨设备同步配置 | 到处都是相同的设置 |
 | 📊 **使用分析** | 追踪 Token、成本、趋势 | 优化支出 |
 | 🌐 **随处部署** | 本地主机、VPS、Docker、Cloudflare Workers | 灵活的部署选项 |
@@ -458,6 +459,16 @@ Combo: "my-coding-stack"
 - ☁️ **VPS/云** 跨设备共享
 - 🐳 **Docker** - 一键部署
 - 🚀 **Cloudflare Workers** - 全球边缘网络
+
+### 🧩 技能管理
+
+在仪表板 **Skills** 页面，你可以：
+
+- **保存自定义技能** — 把常用的提示词、工作流写成 SKILL.md 正文，保存为自己的技能
+- **按使用强化** — 每次成功使用技能会 +1 使用次数并提升置信度（用得多 = 越信任）
+- **标签管理** — 给技能打标签，快速检索
+
+> 内置技能来自 GitHub 仓库 `skills/` 目录（只读），自定义技能保存在本地数据库（`kv` 表 `userSkills` 作用域），两端互不影响。
 
 </details>
 
@@ -946,7 +957,7 @@ Model: cc/claudeus-4-6
 
 ```bash
 # Clone and install
-git clone https://github.com/decolua/9router.git
+git clone https://github.com/lza6/9router-Max.git
 cd 9router
 npm install
 npm run build
@@ -1094,6 +1105,22 @@ docker stop 9router && docker rm 9router
 
 ---
 
+## 🛠️ 技能系统（Skills）
+9Router 内置技能（Skills）体系，让 AI 代码工具直接使用你已配置的 AI 网关能力：
+
+- **内置技能**：Chat / 图像生成 / TTS / STT / 嵌入 / 网页搜索 / 网页抓取 / 视频生成，每个技能对应一个标准化 SKILL.md，可在 `仪表盘 → 技能` 页面一键复制给 Claude Code / Codex / Cursor 使用。
+- **自定义技能**：支持在仪表盘保存你自己的提示词/工作流技能（`save_skill` 语义），持久化到本地 SQLite；每次成功使用自动递增 `uses` 并强化 `confidence`（用得多 = 越信任），列表按使用次数降序排列。
+- **管理 API**：
+  - `GET /api/skills` — 用户自定义技能列表
+  - `POST /api/skills` — 创建技能（`name` + `content` 必填）
+  - `GET /api/skills/[id]` — 查看技能详情
+  - `PUT /api/skills/[id]` — 更新技能
+  - `DELETE /api/skills/[id]` — 删除技能
+  - `POST /api/skills/[id]/use` — 记录一次成功使用（uses+1，confidence 强化）
+- 该接口受与其它 `/api/*` 相同的鉴权保护（JWT / 本机 CLI token）。
+
+---
+
 ## 🐛 故障排除
 
 “Language model did not provide messages”**
@@ -1152,7 +1179,6 @@ docker stop 9router && docker rm 9router
 ---
 
 ## 📝 API 参考
-
 ### Chat Completions
 
 ```bash
@@ -1255,8 +1281,8 @@ OPENAI_API_KEY="your-cloud-key" bash tester/security/test-cloud-openai-compatibl
 ## 📧 支持
 
 - **网站**：[9router.com](https://9router.com)
-- **GitHub**：[github.com/decolua/9router](https://github.com/decolua/9router)
-- **问题**：[github.com/decolua/9router/issues](https://github.com/decolua/9router/issues)
+- **GitHub**：[github.com/lza6/9router-Max](https://github.com/lza6/9router-Max)
+- **问题**：[github.com/lza6/9router-Max/issues](https://github.com/lza6/9router-Max/issues)
 
 ---
 
@@ -1264,7 +1290,7 @@ OPENAI_API_KEY="your-cloud-key" bash tester/security/test-cloud-openai-compatibl
 
 感谢所有帮助让 9Router 变得更好的贡献者！
 
-[![Contributors](https://contrib.rocks/image?repo=decolua/9router&max=100&columns=20&anon=1)](https://github.com/decolua/9router/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=decolua/9router&max=100&columns=20&anon=1)](https://github.com/lza6/9router-Max/graphs/contributors)
 
 ---
 
@@ -1280,7 +1306,7 @@ OPENAI_API_KEY="your-cloud-key" bash tester/security/test-cloud-openai-compatibl
 4 推送到分支（`git push origin feature/amazing-feature`）
 5. 打开 Pull Request
 
-详细指南请参阅 [Pull Requests](https://github.com/decolua/9router/pulls)。
+详细指南请参阅 [Pull Requests](https://github.com/lza6/9router-Max/pulls)。
 
 ---
 

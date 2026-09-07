@@ -1,3 +1,9 @@
+# v0.5.70 (2026-09-08)
+
+## Features
+- **技能系统（Skills）**：仪表盘「技能」页支持自定义技能保存（`save_skill`），每次成功使用自动递增 `uses` 并强化 `confidence`（用得多 = 越信任），列表按使用次数降序；新增 `GET/POST /api/skills` 与 `GET/PUT/DELETE/POST /api/skills/[id]`（含 `/use`）管理 API，数据持久化到本地 SQLite（`kv` 表 `userSkills` scope，无迁移、纯新增）。
+- **文档**：README.md 切换为中文主文档（原英文版保留为 `README.en.md`），新增「技能系统」章节。
+
 # v0.5.69 (2026-09-05)
 
 ## Features
