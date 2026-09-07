@@ -1,3 +1,12 @@
+# v0.5.71 (2026-09-08)
+
+## Fixes & Hardening（终局闭环审计）
+- **skillsRepo**：`rowToSkill` 对损坏 JSON 容错（坏数据不再炸列表接口）；`recordSkillUse` 改为单条 SQL `json_set` 原子自增（并发不丢 uses）；`createUserSkill`/`updateUserSkill` 增加输入长度上限（name≤100 / desc≤500 / content≤20000 / tags≤20×50）与字段类型强校验。
+- **API**：`/api/skills` 系列区分非法 JSON（400 "Request body must be valid JSON"）与业务校验；PUT 白名单+类型校验（非法类型 400 不静默吞）；500 统一收敛为「操作失败」不泄漏内部细节；`/use` 去掉预查改由 repo 返回 404。
+- **前端**：技能页新增 `usingId`/`deletingId` 防重复提交、删除 404 幂等成功、输入框 maxLength、错误/空/加载态完整。
+- **测试**：`tests/unit/skills.test.js` 扩至 13 用例（损坏 JSON 容错、长度上限、20 并发原子自增、404、非法类型），与 db-driver-chain 合计 16 通过。
+- **文档**：README.md / i18n/README.zh-CN.md / README.en.md 补充技能系统章节的鉴权、校验、错误码说明。
+
 # v0.5.70 (2026-09-08)
 
 ## Features

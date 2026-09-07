@@ -16,6 +16,10 @@ function notFound(message) {
   return NextResponse.json({ error: message }, { status: 404, headers: NO_STORE_HEADERS });
 }
 
+function serverError() {
+  return NextResponse.json({ error: "操作失败" }, { status: 500, headers: NO_STORE_HEADERS });
+}
+
 // GET /api/skills/[id] — 单个技能详情
 export async function GET(request, { params }) {
   try {
@@ -25,22 +29,48 @@ export async function GET(request, { params }) {
     return NextResponse.json({ skill }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.log("Error getting user skill:", error);
-    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE_HEADERS });
+    return serverError();
   }
 }
 
-// PUT /api/skills/[id] — 更新
+// PUT /api/skills/[id] — 更新（类型校验对齐 POST）
 export async function PUT(request, { params }) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return badRequest("Request body must be valid JSON");
+  }
   try {
     const { id } = await params;
-    const body = await request.json().catch(() => null);
-    if (!body) return badRequest("Invalid JSON body");
-    const updated = await updateUserSkill(id, body);
+    // 白名单字段 + 类型强校验（非法类型 → 400，不静默吞）
+    const patch = {};
+    if (body.name !== undefined) {
+      if (typeof body.name !== "string") return badRequest("name must be a string");
+      patch.name = body.name;
+    }
+    if (body.description !== undefined) {
+      if (typeof body.description !== "string") return badRequest("description must be a string");
+      patch.description = body.description;
+    }
+    if (body.content !== undefined) {
+      if (typeof body.content !== "string") return badRequest("content must be a string");
+      if (!body.content.trim()) return badRequest("content is required");
+      patch.content = body.content;
+    }
+    if (body.tags !== undefined) {
+      if (!Array.isArray(body.tags)) return badRequest("tags must be an array of strings");
+      for (const t of body.tags) {
+        if (typeof t !== "string") return badRequest("tags must be an array of strings");
+      }
+      patch.tags = body.tags;
+    }
+    const updated = await updateUserSkill(id, patch);
     if (!updated) return notFound("Skill not found");
     return NextResponse.json({ skill: updated }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.log("Error updating user skill:", error);
-    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE_HEADERS });
+    return serverError();
   }
 }
 
@@ -53,6 +83,6 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.log("Error deleting user skill:", error);
-    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE_HEADERS });
+    return serverError();
   }
 }

@@ -1117,7 +1117,8 @@ docker stop 9router && docker rm 9router
   - `PUT /api/skills/[id]` — 更新技能
   - `DELETE /api/skills/[id]` — 删除技能
   - `POST /api/skills/[id]/use` — 记录一次成功使用（uses+1，confidence 强化）
-- 该接口受与其它 `/api/*` 相同的鉴权保护（JWT / 本机 CLI token）。
+- 该接口受与其它 `/api/*` 相同的鉴权保护（JWT / 本机 CLI token），未登录返回 `401`。
+- 创建/更新校验：`name` ≤ 100、`description` ≤ 500、`content` ≤ 20000、`tags` ≤ 20 且每项 ≤ 50 字符；缺失/超长/非法类型返回 `400` 及明确错误信息。技能不存在返回 `404`。服务端异常返回通用 `500`，不泄漏内部细节。
 
 ---
 

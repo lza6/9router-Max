@@ -55,7 +55,7 @@ function BuiltinSkillRow({ skill }) {
   );
 }
 
-function UserSkillRow({ skill, onDelete, onUse }) {
+function UserSkillRow({ skill, onDelete, onUse, deleting, using }) {
   const confidencePct = Math.round((skill.confidence || 0.5) * 100);
   return (
     <div className="flex items-start gap-3 p-4 rounded-[14px] border border-border-subtle bg-surface hover:bg-surface-2 transition-colors">
@@ -85,11 +85,17 @@ function UserSkillRow({ skill, onDelete, onUse }) {
         </details>
       </div>
       <div className="flex flex-col gap-1 shrink-0">
-        <Button size="sm" variant="outline" icon="bolt" onClick={() => onUse(skill.id)}>
-          使用一次
+        <Button size="sm" variant="outline" icon={using ? "progress_activity" : "bolt"} disabled={using} onClick={() => onUse(skill.id)}>
+          {using ? "使用中…" : "使用一次"}
         </Button>
-        <Button size="sm" variant="ghost" icon="delete" onClick={() => onDelete(skill.id)}>
-          删除
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={deleting ? "progress_activity" : "delete"}
+          disabled={deleting}
+          onClick={() => onDelete(skill.id)}
+        >
+          {deleting ? "删除中…" : "删除"}
         </Button>
       </div>
     </div>
@@ -103,6 +109,8 @@ export default function SkillsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", content: "", tags: "" });
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [usingId, setUsingId] = useState(null);
 
   const loadSkills = useCallback(async () => {
     try {
@@ -152,23 +160,32 @@ export default function SkillsPage() {
   };
 
   const handleUse = async (id) => {
+    if (usingId) return; // 防重复点击
+    setUsingId(id);
     try {
       const res = await fetch(`/api/skills/${id}/use`, { method: "POST" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await loadSkills();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setUsingId(null);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("确定删除该技能？")) return;
+    if (deletingId) return; // 防重复提交
+    setDeletingId(id);
     try {
       const res = await fetch(`/api/skills/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok && res.status !== 404) throw new Error(`HTTP ${res.status}`);
+      // 404 = 已被删除，按幂等成功处理
       await loadSkills();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -194,6 +211,7 @@ export default function SkillsPage() {
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
+                maxLength={100}
                 className="w-full px-3 py-2 rounded border border-border-subtle bg-surface-2 text-sm text-text-main"
                 placeholder="例如：写小红书文案"
               />
@@ -222,6 +240,7 @@ export default function SkillsPage() {
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
                 rows={5}
+                maxLength={20000}
                 className="w-full px-3 py-2 rounded border border-border-subtle bg-surface-2 text-sm text-text-main font-mono"
                 placeholder="1. 分析用户主题\n2. 生成 3 版标题\n3. ..."
               />
@@ -243,7 +262,14 @@ export default function SkillsPage() {
               <p className="text-xs text-text-muted">还没有自定义技能，点上方“新建技能”保存第一个。</p>
             ) : (
               userSkills.map((skill) => (
-                <UserSkillRow key={skill.id} skill={skill} onUse={handleUse} onDelete={handleDelete} />
+                <UserSkillRow
+                  key={skill.id}
+                  skill={skill}
+                  onUse={handleUse}
+                  onDelete={handleDelete}
+                  deleting={deletingId === skill.id}
+                  using={usingId === skill.id}
+                />
               ))
             )}
           </div>

@@ -1449,6 +1449,23 @@ Notes:
 
 ---
 
+## 🛠️ Skills System
+
+9Router ships built-in Skills for AI coding tools, plus a user skill management layer:
+
+- **Built-in skills**: Chat / Image / TTS / STT / Embeddings / Web Search / Web Fetch / Video — each maps to a standardized SKILL.md copyable from Dashboard → Skills.
+- **Custom skills** (`save_skill`): save your own prompt/workflow skills, persisted to local SQLite; every successful use increments `uses` and strengthens `confidence` (more uses = more trust), sorted by usage.
+- **Management API** (dashboard auth required — JWT or local CLI token):
+  - `GET /api/skills` — list custom skills
+  - `POST /api/skills` — create (`name` + `content` required)
+  - `GET /api/skills/[id]` — get detail
+  - `PUT /api/skills/[id]` — update
+  - `DELETE /api/skills/[id]` — delete
+  - `POST /api/skills/[id]/use` — record one use (uses+1, confidence reinforcement)
+- Errors: `400` invalid/oversized input, `404` missing skill, `401` unauthenticated, `500` server error (generic message, no internals leaked).
+
+---
+
 ## 📝 API Reference
 
 ### Chat Completions

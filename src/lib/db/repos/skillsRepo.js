@@ -7,20 +7,36 @@ import { getAdapter } from "../driver.js";
 //   "用得多 → 越信任"：每次成功使用调 recordSkillUse 递增 uses 并强化 confidence。
 const SCOPE = "userSkills";
 
+// 输入长度上限（防御恶意/误提交超大 payload）
+const MAX_NAME_LEN = 100;
+const MAX_DESC_LEN = 500;
+const MAX_CONTENT_LEN = 20000;
+const MAX_TAGS = 20;
+const MAX_TAG_LEN = 50;
+
 function rowToSkill(row) {
   if (!row) return null;
-  const val = typeof row.value === "string" ? JSON.parse(row.value) : row.value;
+  let val = row.value;
+  if (typeof val === "string") {
+    try {
+      val = JSON.parse(val);
+    } catch {
+      return null; // 损坏的 JSON 容错：跳过而非让整次列表崩掉
+    }
+  }
+  if (!val || typeof val !== "object") return null;
+  const tags = Array.isArray(val.tags) ? val.tags.filter((t) => typeof t === "string") : [];
   return {
-    id: val.id,
-    name: val.name,
-    description: val.description || "",
-    content: val.content || "",
-    tags: Array.isArray(val.tags) ? val.tags : [],
-    uses: Number(val.uses || 0),
-    confidence: Number(val.confidence || 0.5),
-    source: val.source || "user",
-    createdAt: val.createdAt,
-    updatedAt: val.updatedAt,
+    id: typeof val.id === "string" ? val.id : "",
+    name: typeof val.name === "string" ? val.name : "",
+    description: typeof val.description === "string" ? val.description : "",
+    content: typeof val.content === "string" ? val.content : "",
+    tags,
+    uses: Number.isFinite(Number(val.uses)) ? Number(val.uses) : 0,
+    confidence: Number.isFinite(Number(val.confidence)) ? Number(val.confidence) : 0.5,
+    source: typeof val.source === "string" ? val.source : "user",
+    createdAt: typeof val.createdAt === "string" ? val.createdAt : null,
+    updatedAt: typeof val.updatedAt === "string" ? val.updatedAt : null,
   };
 }
 
@@ -39,15 +55,27 @@ export async function getUserSkillById(id) {
 }
 
 export async function createUserSkill({ name, description = "", content = "", tags = [] }) {
-  if (!name || !name.trim()) throw new Error("name is required");
-  if (!content || !content.trim()) throw new Error("content is required");
+  const cleanName = String(name || "").trim();
+  const cleanContent = String(content || "").trim();
+  if (!cleanName) throw new Error("name is required");
+  if (!cleanContent) throw new Error("content is required");
+  if (cleanName.length > MAX_NAME_LEN) throw new Error(`name exceeds ${MAX_NAME_LEN} chars`);
+  if (cleanContent.length > MAX_CONTENT_LEN) throw new Error(`content exceeds ${MAX_CONTENT_LEN} chars`);
+  const cleanDesc = String(description || "").trim();
+  if (cleanDesc.length > MAX_DESC_LEN) throw new Error(`description exceeds ${MAX_DESC_LEN} chars`);
+  const cleanTags = Array.isArray(tags)
+    ? tags.filter(Boolean).map((t) => String(t).trim()).filter(Boolean).slice(0, MAX_TAGS)
+    : [];
+  for (const t of cleanTags) {
+    if (t.length > MAX_TAG_LEN) throw new Error(`tag exceeds ${MAX_TAG_LEN} chars`);
+  }
   const id = randomUUID();
   const skill = {
     id,
-    name: name.trim(),
-    description: description.trim(),
-    content,
-    tags: Array.isArray(tags) ? tags.filter(Boolean).map((t) => String(t).trim()) : [],
+    name: cleanName,
+    description: cleanDesc,
+    content: cleanContent,
+    tags: cleanTags,
     uses: 0,
     confidence: 0.5, // 初始置信度，复用后强化
     source: "user",
@@ -70,12 +98,17 @@ export async function updateUserSkill(id, patch) {
     const row = db.get(`SELECT key, value FROM kv WHERE scope = ? AND key = ?`, [SCOPE, id]);
     if (!row) return;
     const cur = rowToSkill(row);
+    if (!cur) return;
     const next = {
       ...cur,
-      ...(patch.name ? { name: String(patch.name).trim() } : {}),
-      ...(patch.description !== undefined ? { description: String(patch.description).trim() } : {}),
-      ...(patch.content !== undefined ? { content: patch.content } : {}),
-      ...(patch.tags !== undefined ? { tags: Array.isArray(patch.tags) ? patch.tags.filter(Boolean).map((t) => String(t).trim()) : [] } : {}),
+      ...(typeof patch.name === "string" && patch.name.trim() ? { name: patch.name.trim().slice(0, MAX_NAME_LEN) } : {}),
+      ...(typeof patch.description === "string" ? { description: patch.description.trim().slice(0, MAX_DESC_LEN) } : {}),
+      ...(typeof patch.content === "string" && patch.content.trim()
+        ? { content: patch.content.trim().slice(0, MAX_CONTENT_LEN) }
+        : {}),
+      ...(Array.isArray(patch.tags)
+        ? { tags: patch.tags.filter(Boolean).map((t) => String(t).trim()).filter(Boolean).slice(0, MAX_TAGS) }
+        : {}),
       updatedAt: new Date().toISOString(),
     };
     db.run(
@@ -95,22 +128,20 @@ export async function deleteUserSkill(id) {
 }
 
 // 每次模型成功调用某技能后 +1 次使用；置信度向 1 收敛（越用越信任）。
+// 用单条 SQL 原子自增（json_set + json_extract），避免跨进程读-改-写竞态丢 uses。
 export async function recordSkillUse(id) {
   const db = await getAdapter();
-  let updated = null;
-  db.transaction(() => {
-    const row = db.get(`SELECT key, value FROM kv WHERE scope = ? AND key = ?`, [SCOPE, id]);
-    if (!row) return;
-    const cur = rowToSkill(row);
-    const uses = Number(cur.uses || 0) + 1;
-    const confidence = Math.min(1.0, Number(cur.confidence || 0.5) + 0.1 * (1 - Number(cur.confidence || 0.5)));
-    const next = { ...cur, uses, confidence, updatedAt: new Date().toISOString() };
-    db.run(
-      `INSERT INTO kv(scope, key, value) VALUES(?, ?, ?)
-       ON CONFLICT(scope, key) DO UPDATE SET value = excluded.value`,
-      [SCOPE, id, JSON.stringify(next)]
-    );
-    updated = next;
-  });
-  return updated;
+  const now = new Date().toISOString();
+  const updatedAt = now;
+  const changed = db.run(
+    `UPDATE kv SET value = json_set(
+       value,
+       '$.uses', COALESCE(json_extract(value, '$.uses'), 0) + 1,
+       '$.confidence', MIN(1.0, COALESCE(json_extract(value, '$.confidence'), 0.5) + 0.1 * (1 - COALESCE(json_extract(value, '$.confidence'), 0.5))),
+       '$.updatedAt', ?
+     ) WHERE scope = ? AND key = ?`,
+    [updatedAt, SCOPE, id]
+  );
+  if ((changed?.changes ?? 0) === 0) return null;
+  return getUserSkillById(id);
 }
