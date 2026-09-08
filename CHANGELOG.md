@@ -1,3 +1,16 @@
+# v0.5.77 (2026-09-09)
+
+## Features（Phase B 第二批：质量门禁/安全扫描/路由理由/onboarding）
+- **P1-B 技能质量门禁**：description 需含触发词（生成/翻译/查询…）、content 需 ≥2 个 ## 小节（Triggering/Execution/Output）；空 description 兼容存量（标「待完善」）。
+- **P2-b 安全静态扫描**：创建/更新技能时拒绝明文 API 密钥（sk-…）、内网 IP、本机绝对路径、40+ 位随机串；example 占位不误伤。
+- **P1-D 请求路由理由（rationale）**：每次 chat 请求落库 route_reason（clientModel/provider/model/source→target/transport/stream/account），黑匣子全开；usage 页新增 Route 列 + Drawer「路由理由」区块；API 脱敏保留该字段。
+- **P2-d 首页 onboarding**：Endpoint 页首访显示 3 步欢迎横幅（连接提供商→复制 Endpoint→开始对话），localStorage 只显示一次，可关闭。
+
+## Verification
+- 新增 skill-validation（9 用例）/route-reason(3)/route-reason-db(1) 单测 + 既有 skills 系列 13 = 31 全绿。
+- 真实 HTTP E2E（隔离 DATA_DIR dev）：门禁无触发词 400 / 密钥 400 / 合法 201；usage 路由列在 dev bundle 编译验证。
+- 注：npm run build 被当前会话进程 CWD 持有 .next 阻塞（Windows 目录句柄，环境约束非代码）；以 dev server 真实 E2E 代替。
+
 # v0.5.76 (2026-09-09)
 
 ## Features（参考对标 P0+P1 首批落地）
