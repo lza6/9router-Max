@@ -179,7 +179,7 @@ export function parseSSEToOpenAIResponse(rawSSE, fallbackModel) {
  * Handle case: provider forced streaming but client wants JSON.
  * Supports both Codex/Responses API SSE and standard Chat Completions SSE.
  */
-export async function handleForcedSSEToJson({ providerResponse, sourceFormat, targetFormat, provider, model, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess, customToolNames, trackDone, appendLog, reqTag, log }) {
+export async function handleForcedSSEToJson({ providerResponse, sourceFormat, targetFormat, provider, model, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess, customToolNames, trackDone, appendLog, reqTag, log, route_reason }) {
   const contentType = providerResponse.headers.get("content-type") || "";
   const isSSE = contentType.includes("text/event-stream") || (contentType === "" && isResponsesProvider(provider));
   if (!isSSE) return null; // not handled here
@@ -189,7 +189,8 @@ export async function handleForcedSSEToJson({ providerResponse, sourceFormat, ta
   const ctx = {
     provider, model, connectionId,
     request: extractRequestConfig(body, stream),
-    providerRequest: finalBody || translatedBody || null
+    providerRequest: finalBody || translatedBody || null,
+    route_reason: route_reason || null,
   };
 
   // Codex/Responses API SSE path
@@ -220,7 +221,8 @@ export async function handleForcedSSEToJson({ providerResponse, sourceFormat, ta
         latency: { ttft: totalLatency, total: totalLatency },
         tokens: { prompt_tokens: inTokensForLog, completion_tokens: usage.output_tokens || 0 },
         response: { content: textContent, thinking: null, finish_reason: jsonResponse.status || "unknown" },
-        status: "success"
+        status: "success",
+        route_reason: ctx.route_reason || null,
       }, { endpoint: clientRawRequest?.endpoint || null })).catch(() => {});
 
       // Client is Responses API → return as-is
@@ -317,7 +319,8 @@ export async function handleForcedSSEToJson({ providerResponse, sourceFormat, ta
         thinking: parsed.choices?.[0]?.message?.reasoning_content || null,
         finish_reason: parsed.choices?.[0]?.finish_reason || "unknown"
       },
-      status: "success"
+      status: "success",
+      route_reason: ctx.route_reason || null,
     }, { endpoint: clientRawRequest?.endpoint || null })).catch(() => {});
 
     // Re-attach usage explicitly. This handler already HAS the correct usage — it is

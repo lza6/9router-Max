@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getUserSkillById, updateUserSkill, deleteUserSkill,
 } from "@/lib/localDb";
+import { skillValidationErrorMessages } from "@/lib/skillValidation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -51,11 +52,26 @@ export async function PUT(request, { params }) {
     }
     if (body.description !== undefined) {
       if (typeof body.description !== "string") return badRequest("description must be a string");
+      // description 更新同样过质量门禁（触发词）。
+      const nextDesc = body.description;
+      const current = await getUserSkillById(id).catch(() => null);
+      const validationErrors = skillValidationErrorMessages({
+        description: nextDesc,
+        content: typeof body.content === "string" ? body.content : (current?.content || ""),
+      });
+      if (validationErrors) return badRequest(validationErrors.join("; "));
       patch.description = body.description;
     }
     if (body.content !== undefined) {
       if (typeof body.content !== "string") return badRequest("content must be a string");
       if (!body.content.trim()) return badRequest("content is required");
+      // 质量门禁 / 安全扫描：对最终合并值校验（含新 description 的新 content）。
+      const nextDesc = typeof body.description === "string" ? body.description : undefined;
+      const validationErrors = skillValidationErrorMessages({
+        description: nextDesc ?? "",
+        content: body.content,
+      });
+      if (validationErrors) return badRequest(validationErrors.join("; "));
       patch.content = body.content;
     }
     if (body.tags !== undefined) {

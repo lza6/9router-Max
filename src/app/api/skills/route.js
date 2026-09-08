@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUserSkills, createUserSkill } from "@/lib/localDb";
+import { skillValidationErrorMessages } from "@/lib/skillValidation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -55,6 +56,10 @@ export async function POST(request) {
       if (typeof t !== "string") return badRequest("tags must be an array of strings");
       if (t.trim().length > MAX_TAG_LEN) return badRequest(`tag exceeds ${MAX_TAG_LEN} chars`);
     }
+    // 质量门禁（P1-B）+ 安全静态扫描（P2-b）：description 触发词 + content 结构 + 密钥/私有地址检测。
+    // 兼容存量：description 为空放行（前端标「待完善」），但内容结构/密钥问题为硬性错误。
+    const validationErrors = skillValidationErrorMessages({ description, content });
+    if (validationErrors) return badRequest(validationErrors.join("; "));
     const skill = await createUserSkill({ name, description, content, tags });
     return NextResponse.json({ skill }, { status: 201, headers: NO_STORE_HEADERS });
   } catch (error) {

@@ -78,6 +78,7 @@ export function buildRequestDetail(base, overrides = {}) {
     response: base.response || {},
     pxpipe: base.pxpipe || undefined,
     status: base.status || "success",
+    route_reason: base.route_reason, // 路由理由（黑匣子全开：为什么选这个 provider/model/format）
     ...overrides
   };
 }

@@ -716,8 +716,54 @@ export default function APIPageClient({ machineId }) {
 
   const currentEndpoint = baseUrl;
 
+  // 首页 onboarding 微引导（P2-d）：首访时显示 3 步欢迎横幅（localStorage hasSeenWelcome）。
+  const [showWelcome, setShowWelcome] = useState(false);
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem("9rW.onboarded")) setShowWelcome(true);
+    } catch {}
+  }, []);
+
   return (
     <div className="flex flex-col gap-8">
+      {/* 新手 3 步微引导（仅首访显示） */}
+      {showWelcome && (
+        <div className="rounded-[16px] border border-black/5 dark:border-white/5 bg-gradient-to-br from-primary/8 to-transparent p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-text-main">👋 欢迎使用 9Router</h2>
+              <p className="mt-1 text-sm text-text-muted">三步开始：</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                try { localStorage.setItem("9rW.onboarded", "1"); } catch {}
+                setShowWelcome(false);
+              }}
+              className="material-symbols-outlined text-text-muted hover:text-text-main"
+              aria-label="关闭引导"
+            >
+              close
+            </button>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {[
+              { n: "1", t: "连接提供商", d: "去 Providers 页添加一个可用的 AI 模型/API Key。" },
+              { n: "2", t: "复制 Endpoint", d: "把上方 Endpoint 与 API Key 粘到你的 AI 应用 / 终端。" },
+              { n: "3", t: "开始对话", d: "去 Chat 页直接试一试，出错就看 Console Log 定位。" },
+            ].map((s) => (
+              <div key={s.n} className="rounded-xl border border-black/5 dark:border-white/5 bg-surface p-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">{s.n}</span>
+                  <span className="text-sm font-medium text-text-main">{s.t}</span>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-text-muted">{s.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Endpoint Card */}
       <Card>
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">

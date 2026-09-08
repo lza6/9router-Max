@@ -68,7 +68,7 @@ function sanitizeHeaders(headers) {
   return sanitized;
 }
 
-export const __test__ = { sanitizeHeaders };
+export const __test__ = { sanitizeHeaders, flushToDatabase };
 
 function generateDetailId(model) {
   const timestamp = new Date().toISOString();
@@ -116,6 +116,7 @@ async function flushToDatabase() {
             providerResponse: truncateField(item.providerResponse, config.maxJsonSize),
             response: truncateField(item.response, config.maxJsonSize),
             pxpipe: item.pxpipe || undefined,
+            route_reason: item.route_reason || undefined,
           };
 
           db.run(

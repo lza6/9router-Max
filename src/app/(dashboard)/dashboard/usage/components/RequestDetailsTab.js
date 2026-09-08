@@ -260,13 +260,14 @@ export default function RequestDetailsTab() {
                 <th className="text-right p-4 text-sm font-semibold text-text-main">Cache Creation</th>
                 <th className="text-right p-4 text-sm font-semibold text-text-main">Output Tokens</th>
                 <th className="text-left p-4 text-sm font-semibold text-text-main">Latency</th>
+                <th className="text-left p-4 text-sm font-semibold text-text-main">Route</th>
                 <th className="text-center p-4 text-sm font-semibold text-text-main">Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-text-muted">
+                  <td colSpan="9" className="p-8 text-center text-text-muted">
                     <div className="flex items-center justify-center gap-2">
                       <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
                       Loading...
@@ -275,7 +276,7 @@ export default function RequestDetailsTab() {
                 </tr>
               ) : details.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-text-muted">
+                  <td colSpan="9" className="p-8 text-center text-text-muted">
                     No request details found
                   </td>
                 </tr>
@@ -314,6 +315,15 @@ export default function RequestDetailsTab() {
                         <div>Total: <span className="font-mono">{detail.latency?.total || 0}ms</span></div>
                       </div>
                     </td>
+                    <td className="max-w-[220px] p-4">
+                      {detail.route_reason ? (
+                        <div className="truncate font-mono text-xs text-text-muted" title={`${detail.route_reason.provider}/${detail.route_reason.model}`}>
+                          {detail.route_reason.sourceFormat || ""}{detail.route_reason.targetFormat && detail.route_reason.targetFormat !== detail.route_reason.sourceFormat ? `→${detail.route_reason.targetFormat}` : ""} · {detail.route_reason.provider || ""}/{detail.route_reason.model || ""}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-text-muted">—</span>
+                      )}
+                    </td>
                     <td className="p-4 text-center">
                       <Button
                         variant="outline"
@@ -351,6 +361,44 @@ export default function RequestDetailsTab() {
       >
         {selectedDetail && (
           <div className="space-y-6">
+            {selectedDetail.route_reason && (
+              <div className="rounded-lg border border-black/5 dark:border-white/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-[18px] text-text-muted">route</span>
+                  <span className="font-semibold text-sm text-text-main">路由理由（为什么选它）</span>
+                  {selectedDetail.route_reason.passthrough && (
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-600">原生直通</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+                  <div>
+                    <span className="text-text-muted block text-xs">请求模型</span>
+                    <span className="font-mono text-text-main">{selectedDetail.route_reason.clientModel || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted block text-xs">路由到</span>
+                    <span className="font-mono text-text-main">{selectedDetail.route_reason.provider || "—"}/{selectedDetail.route_reason.model || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted block text-xs">格式</span>
+                    <span className="font-mono text-text-main">{selectedDetail.route_reason.sourceFormat || "—"}{selectedDetail.route_reason.targetFormat && selectedDetail.route_reason.targetFormat !== selectedDetail.route_reason.sourceFormat ? ` → ${selectedDetail.route_reason.targetFormat}` : ""}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted block text-xs">传输</span>
+                    <span className="font-mono text-text-main">{selectedDetail.route_reason.transport || "默认"}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted block text-xs">Stream</span>
+                    <span className="font-mono text-text-main">{selectedDetail.route_reason.stream ? "是" : "否"}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted block text-xs">账号</span>
+                    <span className="font-mono text-text-main">{selectedDetail.route_reason.account || "—"}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid min-w-0 grid-cols-1 gap-4 text-sm sm:grid-cols-2">
               <div>
                 <span className="text-text-muted">ID:</span>{" "}

@@ -52,7 +52,7 @@ export async function GET(request) {
     // bodies (user prompts, tool calls) and provider responses. Returning them
     // wholesale lets any dashboard-authenticated user (or, if requireLogin is
     // disabled, anyone) read every user's conversation history. Keep the
-    // metadata (model, tokens, latency, status) but drop message content.
+    // metadata (model, tokens, latency, status, route_reason) but drop message content.
     const redactedDetails = (result.details || []).map((d) => {
       const redacted = { ...d };
       for (const key of ["request", "providerRequest", "providerResponse", "response"]) {

@@ -258,8 +258,9 @@ export default function SkillsPage() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="w-full px-3 py-2 rounded border border-border-subtle bg-surface-2 text-sm text-text-main"
-                placeholder="一句话说明这个技能做什么"
+                placeholder="一句话说明这个技能做什么（建议含动词：生成/翻译/查询…会校验）"
               />
+              <p className="mt-1 text-[11px] text-text-muted">描述建议含触发词（生成/翻译/查询/修复…），内容需至少 2 个 "## " 小节（Triggering/Execution/Output）。</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-text-main mb-1">标签（逗号分隔）</label>

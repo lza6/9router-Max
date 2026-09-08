@@ -73,6 +73,22 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
 
   const sourceFormat = sourceFormatOverride || detectFormat(body);
 
+  // —— 路由理由（黑匣子全开：为什么选这个 provider/model/format）——
+  // fail-open：任何异常都不影响请求本身，只影响可观测性字段。
+  // useTransport 在此刻尚未声明（在下方 transport 段才定义），故第一轮只填
+  // clientModel/provider/model/sourceFormat/account，targetFormat 留到 transport 段补全。
+  let route_reason = null;
+  try {
+    route_reason = {
+      clientModel: body?.model || null,
+      provider,
+      model,
+      sourceFormat: sourceFormat || null,
+      stream: body?.stream === true,
+      account: credentials?.connectionName || credentials?.connectionId?.slice(0, 8) || null,
+    };
+  } catch { /* observability must not break requests */ }
+
   // Check for bypass patterns (warmup, skip, cc naming)
   const bypassResponse = handleBypassRequest(body, model, userAgent, ccFilterNaming);
   if (bypassResponse) return bypassResponse;
@@ -100,6 +116,18 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   if (useTransport && credentials) credentials.runtimeTransport = useTransport;
   const stripList = getModelStrip(alias, model);
   const upstreamModel = getModelUpstreamId(alias, model);
+
+  // 路由理由（在 transport/targetFormat 已确定后补全；前面已初始化占位）。
+  try {
+    route_reason = {
+      ...(route_reason || {}),
+      targetFormat: targetFormat || null,
+      transport: useTransport?.format || null,
+      alias: PROVIDER_ID_TO_ALIAS[provider] || provider,
+    };
+  } catch { /* fail-open */ }
+
+  // route_reason 以显式参数传给下游处理器（不写 body，避免污染上游请求体）。
 
   // Inject provider-level thinking config override (only if client hasn't set)
   // on/off → extended type (body.thinking), none/low/medium/high → effort type (body.reasoning_effort)
@@ -384,7 +412,8 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
       providerRequest: translatedBody || null,
       response: { error: error.message || String(error), status: error.name === "AbortError" ? 499 : 502, thinking: null },
       pxpipe: pxpipeSummary,
-      status: "error"
+      status: "error",
+      route_reason,
     })).catch(() => { });
 
     if (error.name === "AbortError") {
@@ -458,7 +487,8 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
       providerRequest: finalBody || translatedBody || null,
       response: { error: message, status: statusCode, thinking: null },
       pxpipe: pxpipeSummary,
-      status: "error"
+      status: "error",
+      route_reason,
     })).catch(() => { });
 
     const errMsg = formatProviderError(new Error(message), provider, model, statusCode);
@@ -470,7 +500,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     return createErrorResult(statusCode, errMsg, resetsAtMs);
   }
 
-  const sharedCtx = { provider, model, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess, pxpipe: pxpipeSummary, reqTag, log };
+  const sharedCtx = { provider, model, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess, pxpipe: pxpipeSummary, reqTag, log, route_reason };
   const appendLog = (extra) => appendRequestLog({ model, provider, connectionId, ...extra }).catch(() => { });
   const trackDone = () => trackPendingRequest(model, provider, connectionId, false);
 
