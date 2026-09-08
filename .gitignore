@@ -97,3 +97,6 @@ graphify-out/*
 /graft/
 
 .next-b/
+
+# Local UI audit artifacts
+/.audit/
