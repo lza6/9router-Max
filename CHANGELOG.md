@@ -1,3 +1,10 @@
+# v0.5.75 (2026-09-08)
+
+## Features（前端结构加固）
+- App Router 边界：新增 (dashboard)/loading.js（骨架屏）、error.js（错误+重试）、not-found.js（404 引导）
+- 共享组件分层：src/shared/components 按 primitives/modal/auth/layout/data/provider 归类，index.js 聚合导出零破坏（旧路径 re-export 桩）
+- 验证：build 通过、21 单测全绿、E2E（skills 页 200 + metrics 200）
+
 # v0.5.74 (2026-09-08)
 
 ## Features（生产性能与运维加固）
