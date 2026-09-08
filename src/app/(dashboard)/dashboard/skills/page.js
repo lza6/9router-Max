@@ -24,7 +24,7 @@ function BuiltinSkillRow({ skill }) {
   const url = getSkillRawUrl(skill.id);
   return (
     <div
-      className={`flex items-start gap-3 p-4 rounded-[14px] border shadow-[var(--shadow-soft)] transition-colors ${
+      className={`flex items-start gap-3 p-4 rounded-[14px] border shadow-[var(--shadow-card)] transition-colors ${
         skill.isEntry ? "border-brand-500/40 bg-brand-500/5" : "border-border-subtle bg-surface hover:bg-surface-2"
       }`}
     >
