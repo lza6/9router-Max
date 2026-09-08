@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>9Router 变更报告（v0.5.70 → v0.5.74）</title>
+<title>9Router 变更报告（v0.5.70 → v0.5.75）</title>
 <style>
   :root { --bg:#0f1117; --card:#1a1d27; --border:#2a2e3d; --text:#e6e8ee; --muted:#9aa1b2; --accent:#4f8cff; --ok:#37d399; --warn:#ffb454; --err:#ff6b6b; }
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -119,6 +119,13 @@
   <tr><td>压测</td><td><code>tests/e2e/concurrency-smoke.mjs</code>（100 并发，不依赖付费 LLM）</td></tr>
 </table>
 
+<h3>v0.5.75 — 前端结构加固（App Router 边界 + 组件分层）</h3>
+<table>
+  <tr><th>改动</th><th>内容</th></tr>
+  <tr><td>App Router 边界</td><td>新增 <code>(dashboard)/loading.js</code>（骨架屏）、<code>error.js</code>（错误+重试）、<code>not-found.js</code>（404 引导）</td></tr>
+  <tr><td>共享组件分层</td><td><code>src/shared/components</code> 按 <code>primitives/modal/auth/layout/data/provider</code> 归类；index.js 聚合导出 + 旧路径 re-export 桩，既有 import 零破坏</td></tr>
+</table>
+
 <!-- ============ 4 验证证据 ============ -->
 <h2>4. 真实验证证据（非"理论上"）</h2>
 <div class="card">
@@ -174,10 +181,13 @@
 
   <details><summary>Q8. 损坏数据的 500 与业务校验 400 如何区分？</summary>
   <div class="a"><b>答案：</b>route 层 catch 里白名单正则 <code>/(required|exceeds)/i</code> 命中则透出业务 400；其余一律收敛为通用「操作失败」500（不泄漏 DB 细节）。</div></details>
+
+  <details><summary>Q9. v0.5.75 把 42+ 共享组件移动进子目录后，为什么既有页面不崩？</summary>
+  <div class="a"><b>答案：</b>旧路径保留了 <strong>re-export 桩</strong>（`@/shared/components/X` 仍可解析），且 `index.js` 聚合导出全部保留、组件间相对 import 统一改为聚合路径；`npm run build` 全绿证明 import 图完整。</div></details>
 </div>
 
 <div class="card" style="margin-top:26px; text-align:center; color:var(--muted); font-size:13px;">
-  生成：Claude Code · 报告覆盖 v0.5.70→v0.5.74 · 提交 <code>6bd9de20</code> / <code>1c1284b4</code> / <code>2b904f34</code> / <code>19f081d0</code> / <code>03ea3ec4</code>
+  生成：Claude Code · 报告覆盖 v0.5.70→v0.5.75 · 提交 <code>6bd9de20</code> / <code>1c1284b4</code> / <code>2b904f34</code> / <code>19f081d0</code> / <code>03ea3ec4</code> / <code>b4f30377</code>
 </div>
 
 </div>
