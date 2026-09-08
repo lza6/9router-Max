@@ -1,3 +1,17 @@
+# v0.5.76 (2026-09-09)
+
+## Features（参考对标 P0+P1 首批落地）
+- **技能三源对齐**：SKILLS 常量收录 9router-template/9router-development（DEV_SKILL_IDS 分区），skills/README 与 dashboard 技能页新增「开发者技能」区，终结新手不可发现。
+- **Chat 死链修复**：新增 /api/dashboard/chat/completions 薄代理路由复用统一 handleChat（与 /v1 同源，不再 404），Sidebar 恢复 Chat 导航入口。
+- **Console Log 教学化**：教学头（ERROR/INFO 语义、metrics 字段、技能/练习跳转）+ 空态白话引导 + 归入独立 /api/console-logs 命名空间并进 PROTECTED_API_PATHS。
+- **技能负反馈**：skillsRepo.rejectSkillUse（confidence 反向收敛 + rejectedAt），/api/skills/[id]/reject 路由（404/500 语义一致），技能页「不好使」按钮 + 防重复 + 标记回显。
+- **Chat 页新手上路**：空状态三卡（帮我选模型/我该先做什么/这是什么）+ placeholder 动态三态（无 provider→未发消息→常规）+ 当前模型提示 + 底部排障引导。
+
+## Verification
+- skills 专项单测 12 用例通过（skills.test.js 13 改隔离 + skills-reject.test.js 5 新增）；回归基线外 3 失败（db-concurrent 并发聚合，与本批无关，评测环境确认）。
+- 真实 HTTP E2E（隔离 DATA_DIR dev）：登录 200 → 技能 创建/使用/拒绝/列表/删除 全链 200 → chat/completions 与 /v1 同源（401 Missing API key，证明透传生效不再 404）→ console-logs 守卫 401 + SSE 首帧 OK。
+- 注：npm run build 因本机 Windows .next/standalone 空目录被目录句柄占用 EBUSY（环境瞬态，非本批改动）；Standalone 模式验证被此阻塞，以真实 HTTP 冒烟替代。
+
 # v0.5.75 (2026-09-08)
 
 ## Features（前端结构加固）
