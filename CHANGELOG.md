@@ -1,3 +1,16 @@
+# v0.5.74 (2026-09-08)
+
+## Features（生产性能与运维加固）
+- **应用层限流**（默认关闭，不改变现有行为）：内存令牌桶作用于 `/v1/chat/completions` 与 `/v1/messages`（per-IP 含 XFF 解析）；env 开关 `RATE_LIMIT_ENABLED`/`RATE_LIMIT_RPM`/`RATE_LIMIT_CAPACITY`；超限 429 + Retry-After。
+- **探针**：新增 `/api/ready`（DB 探活，不付费上游探测）与 `/api/metrics`（进程+服务 JSON），并加入 dashboardGuard 公开路径。
+- **压测脚本**：`tests/e2e/concurrency-smoke.mjs`（默认 100 并发打 /api/skills，不依赖付费 LLM）。
+- **文档**：README/zh-CN/en 补「运维与性能」章节。
+
+## Verification
+- rateLimit 5 单测 + skills 13 + db-chain 3 = 21 passed
+- build 通过；standalone E2E：ready/metrics 公开可访问；RATE_LIMIT_ENABLED=true 下第 4 次起 429 实测通过
+- 并发冒烟：100 并发 → 全部 200，无崩溃，均 3ms/req
+
 # v0.5.71 (2026-09-08)
 
 ## Fixes & Hardening（终局闭环审计）

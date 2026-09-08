@@ -1321,6 +1321,16 @@ node ../tests/__baseline__/verify-no-regression.mjs test-results.json
 
 ---
 
+## 🚦 运维与性能（限流 / 健康 / 指标 / 压测）
+
+**应用层限流**（默认关闭，不改变现有行为）：内存令牌桶作用于 `/v1/chat/completions` 与 `/v1/messages`；启用 `RATE_LIMIT_ENABLED=true RATE_LIMIT_RPM=60 RATE_LIMIT_CAPACITY=60`；超限返回 429 + Retry-After。
+
+**探针**（公开无需登录）：`/api/health`、`/api/ready`（DB 探活，不付费上游探测）、`/api/metrics`（进程+服务 JSON）。
+
+**并发冒烟**：`E2E_CLI_TOKEN=<token> node tests/e2e/concurrency-smoke.mjs`（默认 100 并发，不依赖付费 LLM）。
+
+---
+
 ## 📧 支持
 
 - **网站**：[9router.com](https://9router.com)

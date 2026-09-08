@@ -1535,6 +1535,16 @@ node ../tests/__baseline__/verify-no-regression.mjs test-results.json
 
 ---
 
+## 🚦 Ops & Performance (rate-limit / health / metrics / stress)
+
+**App-layer rate limit** (opt-in, default off): in-memory token bucket on  and  (per-IP incl. XFF). Enable with ; over-limit returns 429 + Retry-After.
+
+**Probes** (public, no auth): ,  (DB liveness, never probes paid upstreams),  (process + service JSON).
+
+**Concurrency smoke** (no paid LLM):  (default 100 concurrent).
+
+---
+
 ## 📧 Support
 
 - **Website**: [9router.com](https://9router.com)

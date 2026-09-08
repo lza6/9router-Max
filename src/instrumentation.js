@@ -10,5 +10,9 @@ export async function register() {
 
     const { startModelCatalogSync } = await import("@/lib/modelCatalog/sync.js");
     startModelCatalogSync();
+
+    // 限流器随进程启动初始化（仅 RATE_LIMIT_ENABLED=true 时实际生效）
+    const { initRateLimiter } = await import("@/lib/rateLimit.js");
+    initRateLimiter();
   }
 }

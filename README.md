@@ -1321,6 +1321,29 @@ node ../tests/__baseline__/verify-no-regression.mjs test-results.json
 
 ---
 
+## 🚦 运维与性能（限流 / 健康 / 指标 / 压测）
+
+**应用层限流**（默认关闭，不改变现有行为）：
+- 内存令牌桶，作用于 `/v1/chat/completions` 与 `/v1/messages`（per-IP，含 XFF 解析）
+- 启用：`RATE_LIMIT_ENABLED=true RATE_LIMIT_RPM=60 RATE_LIMIT_CAPACITY=60`
+- 超限返回 `429` + `Retry-After`；不泄漏内部细节
+- 多实例部署时应换 Redis 等共享限流存储（当前单机 SQLite 场景内存桶足够）
+
+**健康 / 就绪 / 指标探针**（均公开，无需登录）：
+- `GET /api/health` → `{"ok":true}`
+- `GET /api/ready` → DB 可写即 `{ok:true, db, driver}`（**不**做付费上游探活以免误触配额）
+- `GET /api/metrics` → 进程（uptime/memory/pid）+ 服务（dbDriver/限流状态）JSON
+
+**并发冒烟**（不依赖付费 LLM）：
+```bash
+cd .next/standalone && node custom-server.js --port 20128   # 先启动
+E2E_CLI_TOKEN=<本机CLI token> node tests/e2e/concurrency-smoke.mjs   # 默认 100 并发打 /api/skills
+```
+
+**观测演进路径**：当前用 console-log 页 + 上述指标端点（零依赖）；规模化/多实例时再引入 Prometheus / OpenTelemetry。
+
+---
+
 ## 📧 支持
 
 - **网站**：[9router.com](https://9router.com)
