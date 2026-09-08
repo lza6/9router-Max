@@ -1,5 +1,9 @@
 # v0.5.78 (2026-09-09)
 
+## Features（UI 现代化升级 + Windows 桌面版）
+- **Windows 桌面版（Electron）**：`release/win-unpacked/9Router.exe` 双击即用——自动拉起本地网关（utilityProcess，Node 运行时）、系统托盘（打开面板/启动/停止/开机自启/退出）、自动打开 Dashboard 窗口；HTTPS 自签证书自动信任（失败降 HTTP）；默认密码 123456。构建脚本 `scripts/build-desktop-win.cjs` 一键产出（electron-builder --dir + robocopy 补网关 node_modules）。
+- **UI 现代化升级**：设计令牌/组件打磨/布局重构/深浅双主题。
+
 ## Features（UI 现代化升级：设计令牌/组件打磨/布局重构/深浅双主题）
 - **设计令牌层扩充**：新增语义圆角 `--radius-xs/sm/md/lg/xl`、语义阴影 `--shadow-card/card-hover`、动效 `--transition-fast/normal`、`--ease-out/in-out`；深色模式补齐对应令牌；全站统一 focus-visible 焦点环 + `prefers-reduced-motion` 降级。
 - **基础组件打磨**：Button 品牌阴影/危险成功降级统一/焦点环；Card 统一 `--shadow-card` + hover 抬升；Input/Select 由透明边框改为可见边框 + hover 态；Toggle iOS 风格轨道/焦点环；Badge 加 inner ring；Modal 移除 macOS 红绿灯改现代标题栏 + 关闭按钮 + `pop-in` 入场；Loading 新增 shimmer 骨架。

@@ -1,0 +1,62 @@
+{
+  "name": "9router-desktop",
+  "productName": "9Router",
+  "version": "0.5.78",
+  "description": "9Router Desktop — local AI routing gateway launcher with native window + tray",
+  "main": "main.js",
+  "author": "9Router Team",
+  "license": "MIT",
+  "private": true,
+  "build": {
+    "appId": "com.9router.desktop",
+    "productName": "9Router",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "cert.js",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "gateway",
+        "to": "app",
+        "filter": [
+          "**/*",
+          "!node_modules/**/*"
+        ]
+      },
+      {
+        "from": "gateway-node_modules2.tar.gz",
+        "to": "gateway-node_modules.tar.gz"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/icon-256.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "9Router"
+    },
+    "directories": {
+      "output": "../release"
+    },
+    "electronDist": "../node_modules/electron/dist",
+    "electronVersion": "41.0.0"
+  },
+  "dependencies": {
+    "node-forge": "^1.3.1",
+    "tar": "^7.5.22"
+  },
+  "devDependencies": {
+    "electron-builder": "^26.15.3"
+  }
+}
