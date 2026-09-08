@@ -1493,6 +1493,48 @@ Authorization: Bearer your-api-key
 → Returns all models + combos in OpenAI format
 ```
 
+## 🤖 Development & CI/CD
+
+**Stack**: Node.js 22 + Next.js 16 (plain JS ESM) + React 19; embedded SQLite (`bun:sqlite → better-sqlite3 → node:sqlite → sql.js` fallback chain, no external DB).
+
+**Local dev**:
+
+```bash
+cp .env.example .env
+npm install
+PORT=20128 NEXT_PUBLIC_BASE_URL=http://localhost:20128 npm run dev   # dev (port 20128)
+npm run build && PORT=20128 HOSTNAME=0.0.0.0 npm run start           # production
+```
+
+**Tests** (independent vitest package under `tests/`):
+
+```bash
+cd tests && npm install
+npx vitest run unit/skills.test.js unit/db-driver-chain.test.js      # core regression
+npx vitest run --reporter=json --outputFile=test-results.json        # full + baseline
+node ../tests/__baseline__/verify-no-regression.mjs test-results.json
+```
+
+- Regression gate: `verify-no-regression.mjs` diffs against `tests/__baseline__/known-fails.txt`; **no new baseline-external failures allowed**.
+
+**CI/CD pipeline** (GitHub Actions, full detail in [`docs/CI-CD-PIPELINE.md`](./docs/CI-CD-PIPELINE.md)):
+
+| Stage | Content |
+|-------|---------|
+| Build | Node 22 + `npm ci` (cached) → `next build --webpack` → verify standalone artifacts |
+| Quality | ESLint (legacy baseline tolerated, visible in logs) |
+| Tests | Core unit tests hard-pass + full vitest (baseline-tolerant) + no-regression gate |
+| Security | `npm audit --audit-level=high` + gitleaks secret scan |
+| Deploy | `v*` tag → Docker images to Docker Hub (`decolua/9router`) + GHCR → server `docker compose pull && up -d` |
+| Rollback | image tag = version; re-pull previous tag, data lives on mounted volume |
+| Notify | Actions Checks + optional Slack webhook (`SLACK_WEBHOOK`) |
+
+**Branch strategy**: `feature/*` (PR → CI) → `develop` (integration, full CI) → `main` (`v*` tag release) → `hotfix/*` (urgent fixes).
+
+**Env vars**: security-sensitive values (`JWT_SECRET`, `INITIAL_PASSWORD`, `API_KEY_SECRET`, `MACHINE_ID_SALT`) must be set via environment; see `.env.example`.
+
+---
+
 ## 📧 Support
 
 - **Website**: [9router.com](https://9router.com)

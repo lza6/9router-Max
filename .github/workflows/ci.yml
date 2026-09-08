@@ -1,0 +1,81 @@
+name: CI — Build, Lint, Unit, Security, Regression
+
+on:
+  push:
+    branches: [master, develop]
+  pull_request:
+    branches: [master, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-lint:
+    name: Build & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install root deps
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund --registry=https://registry.npmmirror.com
+      - name: ESLint (errors only, informational — legacy baseline tolerated)
+        run: npx eslint . --quiet || echo "⚠️ ESLint found legacy errors; not blocking until baseline cleaned"
+      - name: Production build
+        run: npm run build
+      - name: Verify standalone artifacts
+        run: |
+          test -f .next/standalone/server.js || { echo "missing standalone/server.js"; exit 1; }
+          test -d .next/server/app/api/skills || { echo "missing /api/skills routes"; exit 1; }
+          echo "✅ standalone artifacts OK"
+
+  unit:
+    name: Unit & Regression Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install root deps
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund --registry=https://registry.npmmirror.com
+      - name: Install tests deps
+        working-directory: tests
+        run: npm install --no-audit --no-fund
+      - name: Core unit tests (skills + db chain)
+        working-directory: tests
+        run: npx vitest run unit/skills.test.js unit/db-driver-chain.test.js
+      - name: Full suite (baseline-tolerant)
+        working-directory: tests
+        run: npx vitest run --reporter=json --outputFile=test-results.json || true
+      - name: Regression gate (no new baseline-external failures)
+        run: node tests/__baseline__/verify-no-regression.mjs tests/test-results.json
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install root deps
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund --registry=https://registry.npmmirror.com
+      - name: npm audit (high+, informational gate)
+        run: npm audit --audit-level=high || true
+      - name: Secret scan (gitleaks, informational)
+        continue-on-error: true
+        run: |
+          npx --yes gitleaks detect --source . --no-banner --report-format json --report-path gitleaks.json || true

@@ -1279,6 +1279,48 @@ OPENAI_API_KEY="your-cloud-key" bash tester/security/test-cloud-openai-compatibl
 
 ---
 
+## 🤖 开发与 CI/CD
+
+**技术栈**：Node.js 22 + Next.js 16（纯 JS ESM）+ React 19；内置 SQLite（`bun:sqlite → better-sqlite3 → node:sqlite → sql.js` 适配链，无需外部数据库）。
+
+**本地开发**：
+
+```bash
+cp .env.example .env
+npm install
+PORT=20128 NEXT_PUBLIC_BASE_URL=http://localhost:20128 npm run dev   # 开发（端口 20128）
+npm run build && PORT=20128 HOSTNAME=0.0.0.0 npm run start           # 生产
+```
+
+**测试**（`tests/` 独立 vitest 包）：
+
+```bash
+cd tests && npm install
+npx vitest run unit/skills.test.js unit/db-driver-chain.test.js      # 核心回归
+npx vitest run --reporter=json --outputFile=test-results.json        # 全量 + 回归基线
+node ../tests/__baseline__/verify-no-regression.mjs test-results.json
+```
+
+- 回归门禁：`verify-no-regression.mjs` 对比 `tests/__baseline__/known-fails.txt`，**不允许出现新的基线外失败**。
+
+**CI/CD 流水线**（GitHub Actions，详见 [`docs/CI-CD-PIPELINE.md`](./docs/CI-CD-PIPELINE.md)）：
+
+| Stage | 内容 |
+|-------|------|
+| Build | Node 22 + `npm ci`（缓存）→ `next build --webpack` → 校验 standalone 产物 |
+| Quality | ESLint（保留 legacy 基线不阻塞，日志可见） |
+| Tests | 核心单测硬性通过 + 全量 vitest（基线容忍）+ 无回归门禁 |
+| Security | `npm audit --audit-level=high` + gitleaks 密钥扫描 |
+| Deploy | `v*` tag → Docker 镜像推 Docker Hub（`decolua/9router`）+ GHCR → 服务器 `docker compose pull && up -d` |
+| Rollback | 镜像 tag 即版本；换回上一 tag 重拉即可，数据在挂载卷不动 |
+| Notify | Actions Check + 可选 Slack Webhook（`SLACK_WEBHOOK`） |
+
+**分支策略**：`feature/*`（PR 触发 CI）→ `develop`（集成，CI 全量）→ `main`（`v*` tag 发布）→ `hotfix/*`（紧急修复）。
+
+**环境变量**：安全敏感项（`JWT_SECRET`、`INITIAL_PASSWORD`、`API_KEY_SECRET`、`MACHINE_ID_SALT`）必须通过环境变量设置，参考 `.env.example`。
+
+---
+
 ## 📧 支持
 
 - **网站**：[9router.com](https://9router.com)
