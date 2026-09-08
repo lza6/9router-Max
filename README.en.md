@@ -1454,7 +1454,7 @@ Notes:
 9Router ships built-in Skills for AI coding tools, plus a user skill management layer:
 
 - **Built-in skills**: Chat / Image / TTS / STT / Embeddings / Web Search / Web Fetch / Video — each maps to a standardized SKILL.md copyable from Dashboard → Skills.
-- **Custom skills** (`save_skill`): save your own prompt/workflow skills, persisted to local SQLite; every successful use increments `uses` and strengthens `confidence` (more uses = more trust), sorted by usage.
+- **Custom skills** (`save_skill`): save your own prompt/workflow skills, persisted to local SQLite; every successful use increments `uses` and strengthens `confidence` (more uses = more trust), sorted by usage. Follow the `skills/9router-template/SKILL.md` Triggering / Execution / Output structure (built into the new-skill form placeholder).
 - **Management API** (dashboard auth required — JWT or local CLI token):
   - `GET /api/skills` — list custom skills
   - `POST /api/skills` — create (`name` + `content` required)

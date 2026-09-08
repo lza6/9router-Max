@@ -7,6 +7,15 @@ description: Chat / code generation via 9Router using OpenAI /v1/chat/completion
 
 Requires `NINEROUTER_URL` (and `NINEROUTER_KEY` if auth enabled). See https://raw.githubusercontent.com/decolua/9router/refs/heads/master/skills/9router/SKILL.md for setup.
 
+## 调用前先确认
+
+`curl $NINEROUTER_URL/v1/models | jq '.data[].id'` 确认模型 id 正确、provider 已连接，再发请求；未连接先引导用户去 Dashboard → Providers 连接，不硬猜 id。
+
+## 不要
+
+- 不把 `NINEROUTER_KEY` 写进文件/日志；只用环境变量。
+- 不自动重试「计费型」请求；不确定就先查响应。
+
 ## Endpoints
 
 - `POST $NINEROUTER_URL/v1/chat/completions` — OpenAI format

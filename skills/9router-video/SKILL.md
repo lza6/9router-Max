@@ -68,6 +68,13 @@ Download: fetch `video.url` from the `done` response.
 
 Submits, polls with progress, downloads to `video.mp4.part`, atomically renames on success. Ctrl+C cancels cleanly; non-zero exit on failure.
 
+## 不要（负面清单）
+
+- **绝不自动重试 `POST /v1/videos/generations`**（重试会重复计费）。即使超时/网络错误，也不要重发创建请求——先 poll 该 `request_id` 确认是否已创建。
+- **缺 `x-9router-connection-id` 就不 poll**。创建响应未返回该 header 时，先问用户/检查账号，不要盲目轮询。
+- **`403`/`permission_denied` 先问用户**（该账号可能无视频配额：Grok Build 订阅档不含，或 xAI key 未开通），不要反复重试。
+- **不要把 `NINEROUTER_KEY` 写进文件/打印到日志**；只用环境变量。
+
 ## Notes & limits
 
 - Jobs are **account-bound** upstream: poll with the same connection that created the job (`x-connection-id` header, value from the create response's `x-9router-connection-id`).

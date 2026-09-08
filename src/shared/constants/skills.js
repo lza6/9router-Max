@@ -67,6 +67,13 @@ export const SKILLS = [
     endpoint: "/v1/web/fetch",
     icon: "language",
   },
+  {
+    id: "9router-video",
+    name: "Video Generation",
+    description: "Text/image-to-video via xAI Grok Imagine (async job flow, account-bound, poll to download MP4).",
+    endpoint: "/v1/videos/generations",
+    icon: "movie",
+  },
 ];
 
 export function getSkillRawUrl(id) {

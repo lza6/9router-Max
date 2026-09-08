@@ -106,6 +106,7 @@ export default function SkillsPage() {
   const [userSkills, setUserSkills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", content: "", tags: "" });
   const [saving, setSaving] = useState(false);
@@ -162,10 +163,14 @@ export default function SkillsPage() {
   const handleUse = async (id) => {
     if (usingId) return; // 防重复点击
     setUsingId(id);
+    setError(null);
+    setSuccess(null);
     try {
       const res = await fetch(`/api/skills/${id}/use`, { method: "POST" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await loadSkills();
+      setSuccess("已记录一次使用，置信度已提升");
+      setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -242,7 +247,7 @@ export default function SkillsPage() {
                 rows={5}
                 maxLength={20000}
                 className="w-full px-3 py-2 rounded border border-border-subtle bg-surface-2 text-sm text-text-main font-mono"
-                placeholder="1. 分析用户主题\n2. 生成 3 版标题\n3. ..."
+                placeholder="## Triggering\n用户说 X 时用它\n\n## Execution\n1. 先确认 provider/模型\n2. 发请求\n3. 处理响应\n\n## Output\n成功贴出模型ID/路径；失败报告状态+error+查 Console Log"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -254,6 +259,7 @@ export default function SkillsPage() {
         )}
 
         {error && <p className="mt-3 text-xs text-red-400">加载失败：{error}</p>}
+        {success && <p className="mt-3 text-xs text-green-400">{success}</p>}
         {loading ? (
           <p className="mt-3 text-xs text-text-muted">加载中…</p>
         ) : (
@@ -285,6 +291,7 @@ export default function SkillsPage() {
 
       <div className="space-y-2">
         <h2 className="text-sm font-semibold text-text-main">内置技能</h2>
+        <p className="text-xs text-text-muted -mt-1">复制链接粘贴到你的 AI（Claude/Cursor/任何 agent）即可使用；入口技能包含完整 setup。</p>
         {SKILLS.map((skill) => (
           <BuiltinSkillRow key={skill.id} skill={skill} />
         ))}

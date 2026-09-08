@@ -1108,8 +1108,8 @@ docker stop 9router && docker rm 9router
 ## 🛠️ 技能系统（Skills）
 9Router 内置技能（Skills）体系，让 AI 代码工具直接使用你已配置的 AI 网关能力：
 
-- **内置技能**：Chat / 图像生成 / TTS / STT / 嵌入 / 网页搜索 / 网页抓取 / 视频生成，每个技能对应一个标准化 SKILL.md，可在 `仪表盘 → 技能` 页面一键复制给 Claude Code / Codex / Cursor 使用。
-- **自定义技能**：支持在仪表盘保存你自己的提示词/工作流技能（`save_skill` 语义），持久化到本地 SQLite；每次成功使用自动递增 `uses` 并强化 `confidence`（用得多 = 越信任），列表按使用次数降序排列。
+- **内置技能**：Chat / 图像生成 / TTS / STT / 嵌入 / 网页搜索 / 网页抓取 / 视频生成，每个技能对应一个标准化 SKILL.md，可在 `仪表盘 → 技能` 页面一键复制给 Claude Code / Codex / Cursor 使用。技能内包含「首次成功路径、新手错误表、Console Log 排障链路、调用前先确认 provider/模型、不自动重试计费请求、语言跟随用户」等工程化约束（提炼自顶级模型系统提示词设计）。
+- **自定义技能**：支持在仪表盘保存你自己的提示词/工作流技能（`save_skill` 语义），持久化到本地 SQLite；每次成功使用自动递增 `uses` 并强化 `confidence`（用得多 = 越信任），列表按使用次数降序排列。建议按 `skills/9router-template/SKILL.md` 的「Triggering / Execution / Output」三段式编写，表单占位已内置该结构。
 - **管理 API**：
   - `GET /api/skills` — 用户自定义技能列表
   - `POST /api/skills` — 创建技能（`name` + `content` 必填）
