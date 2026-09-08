@@ -33,6 +33,17 @@ describe("rateLimit（内存令牌桶）", () => {
     expect(rl.allow("y").ok).toBe(true);
   });
 
+  it("令牌随时间恢复（60rpm 下 2s 恢复 2 个令牌）", async () => {
+    const rl = createRateLimiter(60, 5);
+    // 用满 5 个
+    for (let i = 0; i < 5; i++) expect(rl.allow("z").ok).toBe(true);
+    expect(rl.allow("z").ok).toBe(false);
+    await new Promise((r) => setTimeout(r, 2100)); // 60rpm = 1s 补 1 → 2s 左右补 2
+    expect(rl.allow("z").ok).toBe(true);
+    expect(rl.allow("z").ok).toBe(true);
+    expect(rl.allow("z").ok).toBe(false);
+  });
+
   it("桶数量封顶（evictStale）", () => {
     const rl = createRateLimiter(60, 1);
     for (let i = 0; i < 50; i++) rl.allow(`ip-${i}`);
