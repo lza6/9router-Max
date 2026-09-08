@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, Badge, Button } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
-import { SKILLS, SKILLS_REPO_URL, getSkillRawUrl, getSkillBlobUrl } from "@/shared/constants/skills";
+import { SKILLS, DEV_SKILL_IDS, SKILLS_REPO_URL, getSkillRawUrl, getSkillBlobUrl } from "@/shared/constants/skills";
 
 // 内置技能常量（GitHub URL）+ 用户自定义技能（/api/skills）双数据源。
 function CopyButton({ value, label = "Copy link" }) {
@@ -55,7 +55,7 @@ function BuiltinSkillRow({ skill }) {
   );
 }
 
-function UserSkillRow({ skill, onDelete, onUse, deleting, using }) {
+function UserSkillRow({ skill, onDelete, onUse, onReject, deleting, using, rejecting }) {
   const confidencePct = Math.round((skill.confidence || 0.5) * 100);
   return (
     <div className="flex items-start gap-3 p-4 rounded-[14px] border border-border-subtle bg-surface hover:bg-surface-2 transition-colors">
@@ -76,6 +76,7 @@ function UserSkillRow({ skill, onDelete, onUse, deleting, using }) {
         <div className="flex items-center gap-3 mt-1.5 text-[11px] text-text-muted">
           <span>使用 {skill.uses || 0} 次</span>
           <span>置信度 {confidencePct}%</span>
+          {skill.rejectedAt ? <span className="text-amber-600 dark:text-amber-400">（最近标记过「不好使」）</span> : null}
         </div>
         <details className="mt-2">
           <summary className="text-xs text-primary hover:underline cursor-pointer">查看内容</summary>
@@ -85,8 +86,18 @@ function UserSkillRow({ skill, onDelete, onUse, deleting, using }) {
         </details>
       </div>
       <div className="flex flex-col gap-1 shrink-0">
-        <Button size="sm" variant="outline" icon={using ? "progress_activity" : "bolt"} disabled={using} onClick={() => onUse(skill.id)}>
+        <Button size="sm" variant="outline" icon={using ? "progress_activity" : "bolt"} disabled={using || rejecting} onClick={() => onUse(skill.id)}>
           {using ? "使用中…" : "使用一次"}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={rejecting ? "progress_activity" : "thumb_down"}
+          disabled={rejecting || using}
+          onClick={() => onReject(skill.id)}
+          title="标记为不好使：置信度降低"
+        >
+          {rejecting ? "标记中…" : "不好使"}
         </Button>
         <Button
           size="sm"
@@ -112,6 +123,7 @@ export default function SkillsPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [usingId, setUsingId] = useState(null);
+  const [rejectingId, setRejectingId] = useState(null);
 
   const loadSkills = useCallback(async () => {
     try {
@@ -194,6 +206,25 @@ export default function SkillsPage() {
     }
   };
 
+  const handleReject = async (id) => {
+    if (rejectingId) return; // 防重复点击
+    if (!window.confirm("标记这个技能为「不好使」？置信度会降低。" )) return;
+    setRejectingId(id);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/api/skills/${id}/reject`, { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await loadSkills();
+      setSuccess("已标记「不好使」，置信度已降低");
+      setTimeout(() => setSuccess(null), 4000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRejectingId(null);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Card padding="md">
@@ -272,9 +303,11 @@ export default function SkillsPage() {
                   key={skill.id}
                   skill={skill}
                   onUse={handleUse}
+                  onReject={handleReject}
                   onDelete={handleDelete}
                   deleting={deletingId === skill.id}
                   using={usingId === skill.id}
+                  rejecting={rejectingId === skill.id}
                 />
               ))
             )}
@@ -292,7 +325,15 @@ export default function SkillsPage() {
       <div className="space-y-2">
         <h2 className="text-sm font-semibold text-text-main">内置技能</h2>
         <p className="text-xs text-text-muted -mt-1">复制链接粘贴到你的 AI（Claude/Cursor/任何 agent）即可使用；入口技能包含完整 setup。</p>
-        {SKILLS.map((skill) => (
+        {SKILLS.filter((skill) => !DEV_SKILL_IDS.includes(skill.id)).map((skill) => (
+          <BuiltinSkillRow key={skill.id} skill={skill} />
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-text-main">开发者技能</h2>
+        <p className="text-xs text-text-muted -mt-1">模板与开发 SOP，供创建自定义技能 / 参与仓库开发时参考。</p>
+        {SKILLS.filter((skill) => DEV_SKILL_IDS.includes(skill.id)).map((skill) => (
           <BuiltinSkillRow key={skill.id} skill={skill} />
         ))}
       </div>

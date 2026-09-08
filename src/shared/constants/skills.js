@@ -74,6 +74,22 @@ export const SKILLS = [
     endpoint: "/v1/videos/generations",
     icon: "movie",
   },
+  {
+    id: "9router-template",
+    name: "Skill Template（技能模板）",
+    description: "三段式模板（Triggering / Execution / Output）——新建自定义技能时参考此结构。",
+    endpoint: null,
+    icon: "dashboard_customize",
+    isTemplate: true,
+  },
+  {
+    id: "9router-development",
+    name: "Development SOP（开发指南）",
+    description: "在 9Router 仓库加功能/修 bug 的开发入口：读它再动代码（加 provider / API / skill / 测试 + 验收门禁）。",
+    endpoint: null,
+    icon: "code",
+    isDevelopment: true,
+  },
 ];
 
 export function getSkillRawUrl(id) {
@@ -83,3 +99,6 @@ export function getSkillRawUrl(id) {
 export function getSkillBlobUrl(id) {
   return `${SKILLS_BLOB_BASE}/${id}/SKILL.md`;
 }
+
+// 开发者/模板技能（非能力类）：单独列出，供 dashboard 分区展示。
+export const DEV_SKILL_IDS = ["9router-template", "9router-development"];

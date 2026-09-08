@@ -15,13 +15,15 @@ describe("skillsRepo（用户自定义技能 + 使用强化）", () => {
   beforeAll(async () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "9router-skills-"));
     process.env.DATA_DIR = tempDir;
-    // 重置全局单例，确保适配器指向临时目录
+    // 彻底重置全局单例（含 initPromise 等全部状态），确保不与其它测试文件串 DB
+    global._dbAdapter = null;
     delete global._dbAdapter;
     await getAdapter();
   });
 
   afterAll(async () => {
     try { global._dbAdapter?.instance?.close?.(); } catch {}
+    global._dbAdapter = null;
     delete global._dbAdapter;
     if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
     if (originalDataDir === undefined) delete process.env.DATA_DIR;

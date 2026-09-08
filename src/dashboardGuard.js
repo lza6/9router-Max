@@ -67,6 +67,7 @@ const PROTECTED_API_PATHS = [
   "/api/cli-tools",
   "/api/mcp",
   "/api/translator",
+  "/api/console-logs",
   "/api/tunnel",
 ];
 

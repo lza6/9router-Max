@@ -58,7 +58,7 @@ export {
 // User skills (save_skill: 用户自定义技能 + 使用强化)
 export {
   getUserSkills, getUserSkillById,
-  createUserSkill, updateUserSkill, deleteUserSkill, recordSkillUse,
+  createUserSkill, updateUserSkill, deleteUserSkill, recordSkillUse, rejectSkillUse,
 } from "./repos/skillsRepo.js";
 
 // Usage

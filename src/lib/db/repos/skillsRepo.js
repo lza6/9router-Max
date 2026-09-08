@@ -37,6 +37,7 @@ function rowToSkill(row) {
     source: typeof val.source === "string" ? val.source : "user",
     createdAt: typeof val.createdAt === "string" ? val.createdAt : null,
     updatedAt: typeof val.updatedAt === "string" ? val.updatedAt : null,
+    rejectedAt: typeof val.rejectedAt === "string" ? val.rejectedAt : null,
   };
 }
 
@@ -129,6 +130,25 @@ export async function deleteUserSkill(id) {
 
 // 每次模型成功调用某技能后 +1 次使用；置信度向 1 收敛（越用越信任）。
 // 用单条 SQL 原子自增（json_set + json_extract），避免跨进程读-改-写竞态丢 uses。
+// 负反馈：用户把技能标记为「不好使/失效」时调用。
+// confidence 反向收敛（-0.1*confidence），uses 不动；连续 reject 会让置信度趋近 0，
+// 使该技能在「用得多=越信任」之外有一个可下坠的信号（对齐 held-out 门禁思想）。
+// rowToSkill 只投影白名单字段，rejectedAt 需一并透出（否则前端看不到标记）。
+export async function rejectSkillUse(id) {
+  const db = await getAdapter();
+  const now = new Date().toISOString();
+  const changed = db.run(
+    `UPDATE kv SET value = json_set(
+       value,
+       '$.confidence', MAX(0.0, COALESCE(json_extract(value, '$.confidence'), 0.5) - 0.1 * COALESCE(json_extract(value, '$.confidence'), 0.5)),
+       '$.rejectedAt', ?
+     ) WHERE scope = ? AND key = ?`,
+    [now, SCOPE, id]
+  );
+  if ((changed?.changes ?? 0) === 0) return null;
+  return getUserSkillById(id);
+}
+
 export async function recordSkillUse(id) {
   const db = await getAdapter();
   const now = new Date().toISOString();

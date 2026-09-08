@@ -1,53 +1,74 @@
-# workflow_status.md — 参考项目深度对标（CL4R1T4S + agent/编排/媒体）
+# Workflow Status（v0.5.75 基线 / 2026-09-08 会话）
 
 ## Task Contract
-
-- **原始目标**：参考目录 848 项目每个都可能有可汲取点。重点：CL4R1T4S（顶级模型系统提示词）→ 优化主项目 agent 人格/流程；agent/编排/记忆/媒体/PPT 项目 → 扩展主项目。
-- **当前阶段**：Phase A（ANALYSIS_ONLY）。T01/T03 已完成，T02 进行中 → 汇总 9 节报告 → **等待用户确认实施范围**。
+- **原始目标**：参考目录 868 项目全部有价值点均可汲取；CL4R1T4S 顶级系统提示词用来「做更懂用户的 agent + 小白易用 + 黑匣子全开 + 用户 skills 沉淀 + 图片/视频/PPT/电商扩展」；先分析后实施，产出正式报告，用户确认批次后再改代码。
+- **当前阶段**：Phase A（ANALYSIS_ONLY，只读）。已授权产出 `参考的结果计划指南.md` 与本文档；未授权改代码。
+- **本节点**：finishing RN 修订版 —— 完成子代理并行盘点（12/13 已回，B9 新手上路进行中）、已产出六线结论、已沉淀记忆、待汇入正式报告。
+- **成功标准**：9 节正式报告（识别/现状/亮点/差距/可迁移/路线图/全栈方案/授权状态/待补信息）完成；无 P0 遗漏；等待用户批准批次。
+- **停止条件**：用户批准具体批次后进入 Phase B 实施；期间不改任何源码/配置/依赖/部署文件。
 
 ## Task Graph
 
-| ID | Agent | Goal | Depends | Deliverable | Status |
-|----|-------|------|---------|-------------|--------|
-| T00 | 主协调 | 基线框架 | 无 | 报告骨架 | DONE |
-| T01 | a26905ee | CL4R1T4S 系统提示词深挖 | 无 | 设计模式清单 | **VERIFIED** |
-| T02 | a839743dc | agent/编排/记忆/媒体对标 | 无 | 可迁移清单 | IN_PROGRESS |
-| T03 | a2e99ff1 | skills 空白审计 | T01 | 强化清单 | **VERIFIED** |
-| T04 | 主协调 | 汇总 9 节报告 + 路线图 | T01+T02+T03 | 正式报告 | PENDING |
+| ID | Node | Status |
+|----|------|--------|
+| T00 | 基线框架 + 工作区检查 | DONE |
+| T01 | CL4R1T4S 系统提示词深挖（C1, ad98b41e） | DONE（26 家 60+ 提示词 → 15 规则 + 3 模式） |
+| T02 | 参考目录全量分类盘点（T04, ae681ed6） | DONE（868 → 15 桶；★32 候选） |
+| T03 | 网关竞品对标（B1, add5555d） | DONE（Top5 亮点 + 待验证清单） |
+| T04 | skills 工程对标（B4, a6f3cfb7d） | DONE（Top8 实践 + 模板 3 吸收点 → 已沉淀） |
+| T05 | 记忆/偏好沉淀（B6, a09b083b） | DONE（四层管线 + 3 落地菜单） |
+| T06 | 终端UX/对话透明化（B8, aeb2405d） | DONE（6 透明交互 + chat/dashboard 清单） |
+| T07 | 提示词/边用边学（B7, aeb69d16） | DONE（语义化日志/决策树/讲解层） |
+| T08 | 媒体/内容生产线（B2, ad1dd550d） | DONE（5 生产线差异 + video 产品化 + 电商/PPT 2 构思） |
+| T09 | 主项目当前状态快照（A1, a41f1d5e） | DONE（技能矩阵 + 5 痛缺口） |
+| T10 | 主项目 skills/dashboard 一致性（F1, a1c5384e） | DONE（5 大专断点） |
+| T11 | 新手上路与 onboarding（B9, a38fb98e） | IN_PROGRESS（子代理进行中） |
+| T12 | Diff 与风险审计（A2, a442b674e） | DONE（工作树干净、无未提交改动） |
+| T13 | 正式报告（主协调汇总） | PENDING ← 本阶段交付物 |
+| T14 | 路线图 Red Team | PENDING |
+| T15 | 用户确认批次 | PENDING |
 
-## T01 已验证（CL4R1T4S 精华）
-见上轮记录（10 维度：先搜/简练/负面清单/验证后完成/并行/不猜/跟语言/协议化输出/保密盾/密钥通道；+Muse 三段式等独门模式）。
+## 关键事实（DIRECT 证据）
 
-## T03 已验证（skills 空白审计）
+- **技能数据一致性**：`src/shared/constants/skills.js` 9 项全对齐（含 video）；`skills/README.md` 9 项对齐；但 **`skills/9router-template/` 与 `skills/9router-development/` 均未出现在 SKILLS 常量 / README / dashboard 页**（docs 漂移，新手不可发现）。
+- **Console Log 页真实**：`src/app/(dashboard)/dashboard/console-log/`：SSE `/api/translator/console-logs/stream`，环形 200 行；挂在 `/api/translator` 命名空间（归属不清）；**纯裸日志，零教学**（无字段解释/错误解释/跳转）。
+- **技能页**：有 uses/confidence/查看内容/空状态；**无 onboarding、无 firstVisit、无错误引导**；`page.js:285-290`「Paste this to your AI」不解释 env 配置。
+- **skillsRepo**（`src/lib/db/repos/skillsRepo.js`）：`recordSkillUse` 单条 SQL `json_set` 原子自增（L132-147），uses+1、confidence `+0.1*(1-c)` 向 1 收敛；**无衰减/无负反馈/无来源分级**。POST 只做长度/类型校验（`src/app/api/skills/route.js`），**无 description 触发词 / 无内容结构门禁**。
+- **请求详情**（可观测性地基，已存在）：`requestDetailsRepo.js` 落库 `requestDetails` 表（provider/model/connectionId/status/latency/tokens/request/providerRequest/providerResponse/response/pxpipe），`/api/usage/request-details` + Usage 页 RequestDetailsTab + Drawer 已可逐请求钻取（含客户端请求/上游翻译/原始响应/最终响应 + PXPIPE）。**缺「为什么这样路由」的 rationale 落库**（nexus-llm-router/ccg 式）与「单条消息级」关联。
+- **chat 页**：`basic-chat/`（隐藏于导航，走 `/api/dashboard/chat/completions`）无消息级透明度抽屉；dashboard 首页=Endpoint 页。
+- **git**：工作树干净、无 stash、与 origin/master 同步；近期提交 3 条相关（skills 开发 SOP、rateLimit 单测、DEV-GUIDE）。
 
-### 现状
-- 9 个 SKILL.md 全英文、全「curl 就上」，10 个设计维度除「简练」外**全缺**。
-- 无「先确认 provider 已连接/模型存在再发请求」。
-- 无「不」负面清单（video 的「绝不自动重试防重复计费」写成 prose 非指令）。
-- 无排障链路：日志/Console Log 页（真实存在）**零提及** → 黑匣子。
-- 无语言跟随/输出约束/保密盾。
-- 小白缺口：入口 SKILL.md 无 first-call 成功路径、无 Windows/`curl (7)`/404 新手错误表、无「不知道选哪个 provider 怎么办」。
-- **数据断层**：`skills.js` 常量缺 `9router-video`（文件存在但 dashboard 不可见）。
+## Evidence Ledger
 
-### 强化清单（P0/P1/P2）
-**P0**（不改就烧钱/用不起来）：
-- P0-1 `9router-video` 加显式「不」清单（POST 绝不自动重试防重复计费、缺 connection-id 不 poll、403 先问用户）
-- P0-2 入口 SKILL.md 补「首次成功路径 + 新手错误表（curl(7)/404/Windows set）」
-- P0-3 dashboard「使用一次」加成功反馈（confidence 机制可视化）
+| Claim | Evidence | Type |
+|-------|----------|------|
+| 主项目 v0.5.75，工作树干净 | `git status` 空 / `package.json` version 0.5.75 | DIRECT |
+| skills 常量含 video | `src/shared/constants/skills.js:70-76`（9 项） | DIRECT |
+| template/development 未索引 | `rg "9router-template\|9router-development" skills.js README.md page.js` 无命中 | DIRECT |
+| Console Log 零教学 | `ConsoleLogClient.js`（仅 colorLine + Clear） | DIRECT |
+| skillsRepo confidence 无衰减 | `skillsRepo.js:140` 仅 `+0.1*(1-c)` | DIRECT |
+| POST 无结构门禁 | `src/app/api/skills/route.js` 只做长度/类型 | DIRECT |
+| requestDetails 已有钻取 | `RequestDetailsTab.js`（Drawer：客户端/上游/响应/PXPIPE） | DIRECT |
+| chat 无透明度抽屉 | `BasicChatPageClient.js` 无过程展示组件 | DIRECT |
+| CL4R1T4S 15 规则 | C1 子代理逐文件通读 26 家 | DIRECT |
+| 868 项目分类 | T04 按名称+README 首行（65% 名/25% 读） | INFERENCE |
+| 参考目录=主项目上游 | 目录结构 diff 微（多 cli/、docs/、skills/、tests/） | INFERENCE |
 
-**P1**（30 分钟级对齐产品核心）：
-- P1-1 9 技能统一加「调用前先确认 provider/模型」
-- P1-2 打破黑匣子：入口加「排查」段（Console Log 页 /error 字段/metrics 字段），Console Log + Skills 提上主导航
-- P1-3 入口加「行为」节：语言跟随 + 贴证据 + 保密盾
-- P1-4 dashboard 内置技能列补「复制即用」引导 + **补 video 断层**
-- （新增）P1-5 tools.js 常量补 `9router-video` 条目（修 dashboard 数据断层）
+## Decisions and Assumptions
+- 将六大分线全部纳入正式报告，按「就近落地点」收敛为批次。
+- 假设：主项目放参考目录的是**上游分支**；`git diff up/master` 可导出主项目增量特征（暂未执行——需用户确认远程）。
+- 假设：能力技能 Output 缺失 = 可补，勿删既有内容（V1 保留兼容）。
 
-**P2**：
-- P2-1 用户自定义技能表单加 SKILL.md 三段式模板占位
-- P2-2 入口补「0 配置默认可用」提示
+## Risks and Blockers
+- **`git diff` 8 万行风险**：若执行「看主项目增量点」需 git diff base → 大量输出去重。缓解：仅 diff 指定子路径（skills/、docs/、src/shared/constants/、open-sse/ 等）+ `--stat`。
+- **Router.js 对 `/api/dashboard/chat/completions` 是否有路由**：待验证（若有则该路由在 dev/prod 均可用，若无则钻取时需新增路由）。
+- **无真实浏览器/Playwright**：UI 验证只能静态 + 单测，无法截图走真实路径 → 变更批次需在交付前标注「待用户真机核验」。
 
-### Muse 三段式验证结论
-**值得**：Triggering/Execution/Output 一段式修复审计里 7 个「无」，是 9 个工具型技能最贴合的模板；成本约 +100 行 Markdown。建议新增 `skills/9router-template/SKILL.md` 供用户自定义技能参考；8 个能力技能按三段式重排。
+## Review Findings（Critic）
+- 待 Phase B 实施。
+
+## Validation Matrix
+- 待 Phase B。
 
 ## Next Gate
-等待 T02（agent/编排/媒体对标）完成 → 主协调输出 9 节报告 + P0/P1/P2 路线图 → **停止，等用户确认实施范围**。
+- 子代理 B9 完成后：汇总 9 节正式报告 → Red Team 路线图 → 交用户确认批次。**本阶段不改任何代码。**

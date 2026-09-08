@@ -18,6 +18,11 @@ Drop-in skills for any AI agent (Claude, Cursor, ChatGPT, custom SDK). Just **co
 | Web search | https://raw.githubusercontent.com/decolua/9router/refs/heads/master/skills/9router-web-search/SKILL.md |
 | Web fetch (URL → markdown) | https://raw.githubusercontent.com/decolua/9router/refs/heads/master/skills/9router-web-fetch/SKILL.md |
 
+**开发者技能**（面向创建自定义技能 / 参与仓库开发）：
+
+| Skill Template（创建自定义技能参考） | https://raw.githubusercontent.com/decolua/9router/refs/heads/master/skills/9router-template/SKILL.md |
+| Development SOP（参与仓库开发） | https://raw.githubusercontent.com/decolua/9router/refs/heads/master/skills/9router-development/SKILL.md |
+
 ## How to use
 
 Paste to your AI (Claude, Cursor, ChatGPT, …):

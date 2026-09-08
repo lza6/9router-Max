@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Badge, Button } from "@/shared/components";
 import { getModelsByProviderId } from "@/shared/constants/models";
 import { isAnthropicCompatibleProvider, isOpenAICompatibleProvider } from "@/shared/constants/providers";
@@ -859,16 +860,50 @@ export default function BasicChatPageClient() {
           <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
             {currentMessages.length === 0 ? (
               <div className="flex min-h-[50vh] items-center justify-center px-4 text-center">
-                <div className="max-w-xl space-y-4">
+                <div className="w-full max-w-xl space-y-4">
                   <div className="mx-auto flex size-16 items-center justify-center rounded-[20px] border border-white/10 bg-white/5 text-white/80">
                     <span className="material-symbols-outlined text-[30px]">chat</span>
                   </div>
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-semibold text-white">Start a conversation</h2>
-                    <p className="text-sm leading-6 text-white/60">
-                      Simple chat interface to interact with any AI model from connected providers. Select a model and start chatting!
-                    </p>
-                  </div>
+                  <h2 className="text-2xl font-semibold text-white">Start a conversation</h2>
+                  <p className="text-sm leading-6 text-white/60">
+                    Simple chat interface to interact with any AI model from connected providers. Select a model and start chatting!
+                  </p>
+
+                  {providerGroups.length === 0 ? (
+                    <div>
+                      <p className="text-sm leading-6 text-white/60">
+                        还没有可用的 AI 模型。请先去{" "}
+                        <Link href="/dashboard/providers" className="text-primary underline">Providers</Link>{" "}
+                        连接一个提供商，再回来开始对话。
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="rounded-[16px] border border-white/10 bg-white/5 px-4 py-2 text-[13px] text-white/70">
+                        当前模型：<span className="font-medium text-white">{activeModel?.name || "—"}</span>
+                        {activeModel ? <span className="text-white/45">（{activeModel.providerName}）</span> : null}
+                        <span className="text-white/45"> · 不合适可点上方切换</span>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        {[
+                          { icon: "smart_toy", title: "帮我选个模型", prompt: "请列出当前已连接 provider 里最推荐的一个免费/订阅模型，并告诉我怎么用它。" },
+                          { icon: "flag", title: "我该先做什么？", prompt: "我刚装好 9Router，接下来三步我应该做什么？" },
+                          { icon: "help", title: "这是什么？", prompt: "用大白话解释 9Router 是什么，就像给完全不懂技术的人讲。" },
+                        ].map((card) => (
+                          <button
+                            key={card.title}
+                            type="button"
+                            onClick={() => setDraft(card.prompt)}
+                            className="flex flex-col items-start gap-2 rounded-[16px] border border-white/10 bg-white/5 p-4 text-left transition hover:border-white/25 hover:bg-white/10"
+                          >
+                            <span className="material-symbols-outlined text-[22px] text-white/80">{card.icon}</span>
+                            <span className="text-sm font-medium text-white">{card.title}</span>
+                            <span className="text-[11px] leading-5 text-white/50">点此填充输入框，再按发送</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ) : null}
@@ -928,7 +963,7 @@ export default function BasicChatPageClient() {
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Message AI"
+                  placeholder={providerGroups.length === 0 ? "还没有可用的 AI 模型 → 去 提供商 页面连接一个" : currentMessages.length === 0 ? "试试问我：帮我选个模型 / 先告诉我要做什么" : "Message AI"}
                   rows={1}
                   className="w-full resize-none bg-transparent px-2 text-[15px] leading-6 text-white outline-none placeholder:text-white/40 custom-scrollbar max-h-[25vh] overflow-y-auto"
                 />
@@ -958,7 +993,7 @@ export default function BasicChatPageClient() {
           </div>
 
           <p className="mx-auto mt-2 max-w-3xl px-4 pb-4 text-center text-[11px] text-white/30">
-            Model list is filtered from connected providers.
+            Model list is filtered from connected providers. 出错时打开 Console Log 页把红色 ERROR 行复制给客服/AI 即可。
           </p>
         </div>
       </div>
