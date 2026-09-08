@@ -52,6 +52,7 @@ source/*
 docs/*
 !docs/ARCHITECTURE.md
 !docs/CI-CD-PIPELINE.md
+!docs/CHANGE-REPORT.html
 test/*
 open-sse/test/*
 RM.vn.md

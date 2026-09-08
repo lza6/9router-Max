@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9Router 变更报告（v0.5.70 → v0.5.74）</title>
+<style>
+  :root { --bg:#0f1117; --card:#1a1d27; --border:#2a2e3d; --text:#e6e8ee; --muted:#9aa1b2; --accent:#4f8cff; --ok:#37d399; --warn:#ffb454; --err:#ff6b6b; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font:16px/1.7 "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; padding:32px 16px; }
+  .wrap { max-width:960px; margin:0 auto; }
+  h1 { font-size:30px; margin-bottom:6px; }
+  .sub { color:var(--muted); margin-bottom:28px; }
+  h2 { font-size:22px; margin:34px 0 14px; padding-bottom:8px; border-bottom:2px solid var(--border); }
+  h3 { font-size:17px; margin:20px 0 8px; color:var(--accent); }
+  p, li { color:var(--text); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin:14px 0; }
+  .tag { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:600; margin-right:6px; }
+  .ok { background:rgba(55,211,153,.14); color:var(--ok); }
+  .warn { background:rgba(255,180,84,.14); color:var(--warn); }
+  .err { background:rgba(255,107,107,.14); color:var(--err); }
+  code { background:#252a3a; padding:2px 6px; border-radius:5px; font-size:13px; font-family:"Cascadia Code", Consolas, monospace; }
+  table { width:100%; border-collapse:collapse; margin:10px 0; }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--border); font-size:14px; vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  .flow { background:#131722; border:1px solid var(--border); border-radius:10px; padding:14px 16px; font-family:"Cascadia Code", Consolas, monospace; font-size:13px; white-space:pre; overflow-x:auto; color:#b8c4dd; }
+  .quiz { background:var(--card); border:1px solid var(--accent); border-radius:12px; padding:20px; margin-top:14px; }
+  .quiz details { margin:10px 0; }
+  .quiz summary { cursor:pointer; font-weight:600; color:var(--accent); }
+  .quiz .a { color:var(--muted); font-size:14px; margin-top:6px; }
+  .quiz .a b { color:var(--ok); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>🔀 9Router 变更报告</h1>
+<div class="sub">v0.5.70 → v0.5.74 · 2026-09-08 · 仓库：lza6/9router-Max · 作者：9router 开发团队</div>
+
+<!-- ============ 1 上下文 ============ -->
+<h2>1. 上下文（为什么做这些变更）</h2>
+<div class="card">
+  <p>9Router 是已在<strong>生产环境部署使用</strong>的本地 AI 路由网关 + Next.js 仪表盘：一个 OpenAI 兼容端点（<code>/v1/*</code>）把流量路由到 40+ 上游 provider，带格式翻译、模型组合回退、多账号回退、OAuth/API key 凭据管理、token 刷新、配额统计。</p>
+  <p>本次迭代由五个核心诉求驱动：</p>
+  <ul>
+    <li><strong>技能系统落地</strong>：让 AI 能"沉淀用户自己的 skills"（<code>save_skill</code> 语义），用得多=越信任。</li>
+    <li><strong>生产加固</strong>：项目已在生产跑，任何改动必须考虑兼容性、异常、并发、文档同步——不是"看起来能跑"，是"一次调用就通"。</li>
+    <li><strong>中文门面 + CI/CD</strong>：README 中文优先；建立从构建→质量→测试→安全→部署→回滚的完整流水线。</li>
+    <li><strong>借鉴顶级系统提示词</strong>：参考目录里的 CL4R1T4S（26 家厂商官方系统提示词全集）——提炼「先搜索再实现 / 负面清单 / 验证后完成 / 保密盾」等 10 维设计模式，灌入技能文件。</li>
+    <li><strong>性能与运维</strong>：限流、健康/就绪/指标探针、并发压测，向"能抗高并发"的成熟 SaaS 靠拢。</li>
+  </ul>
+</div>
+
+<!-- ============ 2 直觉 ============ -->
+<h2>2. 直觉与设计思路</h2>
+<div class="card">
+  <h3>2.1 "用得多 = 越信任"的置信度模型</h3>
+  <p>借鉴 agentmemory 的 <code>reinforceLesson</code>：每次成功使用 <code>uses+1</code>，<code>confidence += 0.1×(1−confidence)</code> 收敛到 1。用单条 SQL <code>json_set</code> 原子自增，保证并发不丢次数。列表按 uses 降序——用得多的技能排前面。</p>
+
+  <h3>2.2 损坏数据 = 接口不崩</h3>
+  <p>DB 里任何一条坏 JSON 都不该让整个技能列表 500。`rowToSkill` 用 try/catch 容错 + 字段类型强校验。</p>
+
+  <h3>2.3 "负面清单"胜过"正面要求"</h3>
+  <p>CL4R1T4S 提炼的最大教训：只告诉 agent 做什么不够，必须同等力度告诉它<strong>不做什么</strong>。最典型：video 技能「POST 绝不自动重试（会重复计费）」——从 prose 陈述改成显式「不要」指令。</p>
+
+  <h3>2.4 黑匣子必须打开</h3>
+  <p>Console Log 页（真实存在的 SSE 调试工具）在技能里零提及 = 能力被埋没。给每个技能加「排查」链路：看 status → 打开 Console Log → 看 error 字段。</p>
+
+  <h3>2.5 默认关闭的加固</h3>
+  <p>生产里最怕"升级即事故"。限流默认 <code>RATE_LIMIT_ENABLED=false</code>；CI 的 ESLint 保留 legacy 基线不阻塞；探针不探测付费上游避免误触配额。一切可回滚。</p>
+</div>
+
+<!-- ============ 3 做了什么 ============ -->
+<h2>3. 具体变更（四个版本批次）</h2>
+
+<h3>v0.5.70 — 技能系统动态化</h3>
+<table>
+  <tr><th>改动</th><th>文件</th></tr>
+  <tr><td>用户技能 CRUD + 使用强化</td><td><code>src/lib/db/repos/skillsRepo.js</code></td></tr>
+  <tr><td>管理 API（GET/POST /api/skills + [id] CRUD + /use）</td><td><code>src/app/api/skills/**</code></td></tr>
+  <tr><td>仪表盘技能页（内置+自定义双区）</td><td><code>src/app/(dashboard)/dashboard/skills/page.js</code></td></tr>
+  <tr><td>README 切中文主文档</td><td><code>README.md</code> / <code>i18n/README.zh-CN.md</code></td></tr>
+</table>
+
+<h3>v0.5.71 — 生产加固（审计驱动的深度修复）</h3>
+<table>
+  <tr><th>审计发现</th><th>修复</th></tr>
+  <tr><td>损坏 JSON 炸列表接口（P0）</td><td>rowToSkill try/catch 容错</td></tr>
+  <tr><td>并发丢 uses（P0）</td><td>单条 SQL json_set 原子自增（20 并发验证）</td></tr>
+  <tr><td>输入无上限（需改）</td><td>name≤100 / content≤20000 / tags≤20×50</td></tr>
+  <tr><td>500 泄漏内部细节（需改）</td><td>统一「操作失败」，业务错误白名单透出</td></tr>
+  <tr><td>PUT 静默吞非法类型（需改）</td><td>类型强校验返回 400</td></tr>
+  <tr><td>删除/使用无防重复（需改）</td><td>usingId/deletingId + 404 幂等</td></tr>
+</table>
+
+<h3>v0.5.72 — 中文 README + 完整 CI/CD</h3>
+<ul>
+  <li><code>.github/workflows/ci.yml</code>：Build+Lint / Unit+回归门禁 / Security 三并行 job</li>
+  <li><code>docs/CI-CD-PIPELINE.md</code>：ASCII 流程图、分支策略、部署/回滚、排障表</li>
+  <li>README 补「开发与 CI/CD」章节；.gitignore 放行 docs</li>
+</ul>
+
+<h3>v0.5.73 — CL4R1T4S 技能强化</h3>
+<table>
+  <tr><th>改动</th><th>内容</th></tr>
+  <tr><td>入口 SKILL.md</td><td>First call 首次成功路径 / 新手错误表 / Console Log 排查 / 行为约束（语言跟随+贴证据+保密盾）</td></tr>
+  <tr><td>video 技能</td><td>显式「不要」负面清单（防重复计费 / 缺 connection-id 不 poll / 403 先问用户）</td></tr>
+  <tr><td>6 个能力技能</td><td>统一加「调用前先确认 + 不要」节</td></tr>
+  <tr><td>技能模板</td><td><code>skills/9router-template/SKILL.md</code>（Muse 三段式 Triggering/Execution/Output）</td></tr>
+  <tr><td>dashboard</td><td>补 video 条目（修复数据断层）+ 使用反馈 + 复制即用引导</td></tr>
+</table>
+
+<h3>v0.5.74 — 生产性能与运维加固</h3>
+<table>
+  <tr><th>需求</th><th>落地</th></tr>
+  <tr><td>Rate Limiting</td><td><code>src/lib/rateLimit.js</code> 内存令牌桶（per-IP 含 XFF），接入 /v1/chat 与 /v1/messages，默认关闭，429+Retry-After</td></tr>
+  <tr><td>Health Checks</td><td>新增 <code>/api/ready</code>（DB 探活，不付费上游探测）</td></tr>
+  <tr><td>Observability</td><td>新增 <code>/api/metrics</code>（进程+服务 JSON），公开路径</td></tr>
+  <tr><td>压测</td><td><code>tests/e2e/concurrency-smoke.mjs</code>（100 并发，不依赖付费 LLM）</td></tr>
+</table>
+
+<!-- ============ 4 验证证据 ============ -->
+<h2>4. 真实验证证据（非"理论上"）</h2>
+<div class="card">
+  <table>
+    <tr><th>项</th><th>结果</th></tr>
+    <tr><td>单元测试</td><td>21 passed（skills 13 + rateLimit 5 + db-chain 3）</td></tr>
+    <tr><td>生产构建</td><td><code>npm run build</code> → Compiled successfully（含全部 /api/skills 与 /dashboard/skills）</td></tr>
+    <tr><td>回归门禁</td><td><code>verify-no-regression.mjs</code> → <span class="tag ok">No regression</span></td></tr>
+    <tr><td>限流实测</td><td>开启后第 4 次起 <span class="tag ok">429</span>（证明限流在鉴权前生效）</td></tr>
+    <tr><td>并发压测</td><td>100 并发 → 全 200，无崩溃，均 3ms/req</td></tr>
+    <tr><td>真实 LLM E2E</td><td>api.yjs.im（真实 key，CONNECT 隧道）非流式+流式 → 200；经网关自定义 provider 转发 → 200</td></tr>
+    <tr><td>密钥安全</td><td>真实 E2E key 只走环境变量、仓库零泄漏</td></tr>
+    <tr><td>E2E 全链路</td><td>技能创建/使用(uses+1,conf=0.55)/更新/非法JSON(400)/超长(400)/鉴权(401)/删除/404</td></tr>
+  </table>
+</div>
+
+<!-- ============ 5 已知边界 ============ -->
+<h2>5. 诚实披露的边界</h2>
+<div class="card">
+  <ul>
+    <li><span class="tag warn">未真实调用</span>图片/视频生成等付费消耗型 API（按用户要求跳过）；参数拼装/负面清单已静态确认。</li>
+    <li><span class="tag warn">未引入</span>Redis/Kafka/消息队列/CDN——单机 SQLite 场景不需要，文档已写明何时才需要。</li>
+    <li><span class="tag warn">横向扩展深挖</span>（电商/媒体/PPT）两次子代理会话被中断无完整结果，路线图已记录但未实施。</li>
+    <li><span class="tag warn">P1 候选</span>账号价值评分路由、流式无效响应抑制（思路已在参考的结果计划指南.md）。</li>
+  </ul>
+</div>
+
+<!-- ============ 6 测验 ============ -->
+<h2>6. 变更测验（你必须通过）</h2>
+<p style="color:var(--muted)">先自答，再展开看答案。</p>
+
+<div class="quiz">
+  <details><summary>Q1. 「用得多=越信任」的置信度如何更新？</summary>
+  <div class="a"><b>答案：</b>每次成功使用 <code>uses+1</code>，<code>confidence += 0.1×(1−confidence)</code>（0.5→0.55→…），收敛到 1；用单条 SQL <code>json_set</code> 原子自增避免并发丢失。</div></details>
+
+  <details><summary>Q2. 为什么 video 技能要写显式「不要」清单？</summary>
+  <div class="a"><b>答案：</b>因为创建 POST 自动重试会<strong>重复计费</strong>。从 prose 陈述改为显式负面指令，agent 超时也不会盲目重试。</div></details>
+
+  <details><summary>Q3. 限流默认是开还是关？开启后超限返回什么？</summary>
+  <div class="a"><b>答案：</b>默认<strong>关闭</strong>（RATE_LIMIT_ENABLED=false，不改变现有生产行为）。开启后超限返回 <strong>429 + Retry-After</strong>。</div></details>
+
+  <details><summary>Q4. /api/ready 为什么不探测上游付费 API？</summary>
+  <div class="a"><b>答案：</b>避免<strong>误触配额/计费</strong>；它只做 DB 可写探活。上游可达性由各 provider 的 test 端点覆盖。</div></details>
+
+  <details><summary>Q5. 修复"损坏 JSON 炸列表接口"用了什么方法？</summary>
+  <div class="a"><b>答案：</b><code>rowToSkill</code> 里 <code>JSON.parse</code> 包 try/catch，失败返回 null；<code>getUserSkills</code> 的 <code>.filter(Boolean)</code> 天然跳过坏行。</div></details>
+
+  <details><summary>Q6. CI 的"无回归门禁"是什么？</summary>
+  <div class="a"><b>答案：</b><code>verify-no-regression.mjs</code> 对比 <code>known-fails.txt</code> 基线——<strong>不产生新的基线外失败</strong>才通过（项目契约铁律）。</div></details>
+
+  <details><summary>Q7. 真实 LLM E2E 为什么走 CONNECT 隧道而不是普通 fetch？</summary>
+  <div class="a"><b>答案：</b>本机代理对 curl/node-fetch 的 TLS 握手偶发 <code>ECONNRESET</code>；手动 CONNECT 隧道 + https.request 稳定。脚本读 <code>E2E_API_KEY</code> 环境变量，密钥不落库不入仓。</div></details>
+
+  <details><summary>Q8. 损坏数据的 500 与业务校验 400 如何区分？</summary>
+  <div class="a"><b>答案：</b>route 层 catch 里白名单正则 <code>/(required|exceeds)/i</code> 命中则透出业务 400；其余一律收敛为通用「操作失败」500（不泄漏 DB 细节）。</div></details>
+</div>
+
+<div class="card" style="margin-top:26px; text-align:center; color:var(--muted); font-size:13px;">
+  生成：Claude Code · 报告覆盖 v0.5.70→v0.5.74 · 提交 <code>6bd9de20</code> / <code>1c1284b4</code> / <code>2b904f34</code> / <code>19f081d0</code> / <code>03ea3ec4</code>
+</div>
+
+</div>
+</body>
+</html>
