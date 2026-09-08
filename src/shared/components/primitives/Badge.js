@@ -29,6 +29,7 @@ export default function Badge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full font-semibold",
+        "ring-1 ring-inset ring-black/5",
         variants[variant],
         sizes[size],
         className

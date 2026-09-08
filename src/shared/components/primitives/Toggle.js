@@ -38,8 +38,8 @@ export default function Toggle({
         className={cn(
           "relative inline-flex shrink-0 cursor-pointer rounded-full",
           "transition-colors duration-200 ease-in-out",
-          "focus:outline-none focus:ring-2 focus:ring-brand-500/30",
-          checked ? "bg-brand-500" : "bg-surface-3",
+          "focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60",
+          checked ? "bg-brand-500 shadow-[0_0_0_1px_rgba(229,106,74,0.2)]" : "bg-surface-3 border border-border",
           sizes[size].track,
           disabled && "cursor-not-allowed"
         )}

@@ -1,3 +1,19 @@
+# v0.5.78 (2026-09-09)
+
+## Features（UI 现代化升级：设计令牌/组件打磨/布局重构/深浅双主题）
+- **设计令牌层扩充**：新增语义圆角 `--radius-xs/sm/md/lg/xl`、语义阴影 `--shadow-card/card-hover`、动效 `--transition-fast/normal`、`--ease-out/in-out`；深色模式补齐对应令牌；全站统一 focus-visible 焦点环 + `prefers-reduced-motion` 降级。
+- **基础组件打磨**：Button 品牌阴影/危险成功降级统一/焦点环；Card 统一 `--shadow-card` + hover 抬升；Input/Select 由透明边框改为可见边框 + hover 态；Toggle iOS 风格轨道/焦点环；Badge 加 inner ring；Modal 移除 macOS 红绿灯改现代标题栏 + 关闭按钮 + `pop-in` 入场；Loading 新增 shimmer 骨架。
+- **侧边栏重构**：去掉 macOS 红绿灯改品牌 Logo 呼吸点；导航分组（概览 / Monitor & Tools / System）；导航行高 `py-2` + 左侧激活指示条；分组小标；统一激活态。
+- **顶栏/正文打磨**：Header 常驻毛玻璃（桌面不再透明）、移动端保留菜单按钮、标题字号阶梯；正文容器大屏加宽上限。
+- **着陆页/登录页/控制台**：新增 `logo-badge-dot`/`pop-in`/`skeleton-shimmer`/`card-hover` 等工具类，全局动效克制且支持 `prefers-reduced-motion`。
+
+## Verification
+- 语法冒烟：Sidebar/Button/Modal/Loading/Toggle/Badge 全部 `node --check` 通过。
+- 真实 HTTP E2E（隔离 DATA_DIR dev，浏览器自动化）：登录 200 → dashboard 渲染无控制台错误；9 条主链路页面（endpoint/providers/basic-chat/combos/usage/quota/token-saver/cli-tools/profile）全部 200 无溢出无 JS 错误。
+- 像素审计：侧边栏毛玻璃生效（blur 24px）、激活指示条存在、Logo 呼吸点存在、无 traffic-lights、深色模式可切换渲染。
+- 移动端 390px：无横向溢出、汉堡菜单在、Donate/主题/语言/菜单按钮均可见。
+- 注：npm run build 受本机 Windows .next 目录句柄占用限制（环境瞬态），以 dev server 真实浏览器 E2E + 语法冒烟代替（沿用 v0.5.76/77 同款说明）。
+
 # v0.5.77 (2026-09-09)
 
 ## Features（Phase B 第二批：质量门禁/安全扫描/路由理由/onboarding）

@@ -22,6 +22,9 @@ const navItems = [
   { href: "/dashboard/providers", label: "Providers", icon: "dns" },
   { href: "/dashboard/basic-chat", label: "Chat", icon: "chat" },
   { href: "/dashboard/combos", label: "Combo & Vision Adapter", icon: "layers" },
+];
+
+const monitorItems = [
   { href: "/dashboard/usage", label: "Usage", icon: "bar_chart" },
   { href: "/dashboard/quota", label: "Quota Tracker", icon: "data_usage" },
   { href: "/dashboard/token-saver", label: "Token Saver", icon: "savings" },
@@ -109,25 +112,19 @@ export default function Sidebar({ onClose }) {
 
   return (
     <>
-      <aside className="flex w-72 flex-col border-r border-border-subtle bg-vibrancy backdrop-blur-xl transition-colors duration-300 min-h-full">
-        {/* Traffic lights */}
-        <div className="flex items-center gap-2 px-6 pt-5 pb-2">
-          <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-          <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-          <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
-        </div>
-
-        {/* Logo */}
-        <div className="px-6 py-4 flex flex-col gap-2">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="flex items-center justify-center size-9 rounded-[10px] bg-gradient-to-br from-brand-500 to-brand-700 shadow-[var(--shadow-warm)]">
+      <aside className="flex w-72 flex-col border-r border-border bg-vibrancy backdrop-blur-xl transition-colors duration-300 min-h-full">
+        {/* Brand header: logo + version (no macOS traffic lights) */}
+        <div className="px-5 py-5 flex flex-col gap-2">
+          <Link href="/dashboard" className="flex items-center gap-3 group">
+            <div className="relative flex items-center justify-center size-9 rounded-[10px] bg-gradient-to-br from-brand-500 to-brand-700 shadow-[var(--shadow-warm)] transition-transform group-hover:scale-105">
               <span className="material-symbols-outlined text-white text-[20px]">hub</span>
+              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-emerald-400 logo-badge-dot ring-2 ring-surface" />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-lg font-semibold tracking-tight text-text-main">
+              <h1 className="text-base font-semibold tracking-tight text-text-main leading-tight">
                 {APP_CONFIG.name}
               </h1>
-              <span className="text-xs text-text-muted">v{APP_CONFIG.version}</span>
+              <span className="text-[11px] text-text-muted">v{APP_CONFIG.version}</span>
             </div>
           </Link>
           {updateInfo && (
@@ -156,43 +153,31 @@ export default function Sidebar({ onClose }) {
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 py-2 space-y-0.5 overflow-y-auto custom-scrollbar">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={cn(
-                "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
-                isActive(item.href)
-                  ? "bg-primary/10 text-primary"
-                  : "text-text-muted hover:bg-surface-2 hover:text-text-main"
-              )}
-            >
-              <span
-                className={cn(
-                  "material-symbols-outlined text-[18px]",
-                  isActive(item.href) ? "fill-1" : "group-hover:text-primary transition-colors"
-                )}
-              >
-                {item.icon}
-              </span>
-              <span className="text-[13px] font-medium">{item.label}</span>
-            </Link>
-          ))}
+        {/* Navigation — grouped */}
+        <nav className="flex-1 px-3 py-2 space-y-5 overflow-y-auto custom-scrollbar">
+          <div className="space-y-0.5">
+            {navItems.map((item) => (
+              <NavLink key={item.href} item={item} active={isActive(item.href)} onClose={onClose} />
+            ))}
+          </div>
+
+          {/* Monitor & Tools */}
+          <div className="space-y-0.5">
+            <SectionLabel>Monitor & Tools</SectionLabel>
+            {monitorItems.map((item) => (
+              <NavLink key={item.href} item={item} active={isActive(item.href)} onClose={onClose} />
+            ))}
+          </div>
 
           {/* System section */}
-          <div className="pt-3 mt-2 space-y-0.5">
-            <p className="px-4 text-xs font-semibold text-text-muted/60 uppercase tracking-wider mb-2">
-              System
-            </p>
+          <div className="space-y-0.5">
+            <SectionLabel>System</SectionLabel>
 
             {/* Media Providers accordion */}
             <button
               onClick={() => setMediaOpen((v) => !v)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all group",
                 pathname.startsWith("/dashboard/media-providers")
                   ? "bg-primary/10 text-primary"
                   : "text-text-muted hover:bg-surface-2 hover:text-text-main"
@@ -205,14 +190,14 @@ export default function Sidebar({ onClose }) {
               </span>
             </button>
             {mediaOpen && (
-              <div className="pl-4">
+              <div className="pl-4 mt-0.5 space-y-0.5">
                 {MEDIA_PROVIDER_KINDS.filter((k) => VISIBLE_MEDIA_KINDS.includes(k.id)).map((kind) => (
                   <Link
                     key={kind.id}
                     href={`/dashboard/media-providers/${kind.id}`}
                     onClick={onClose}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-1 rounded-lg transition-all group",
+                      "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
                       pathname.startsWith(`/dashboard/media-providers/${kind.id}`)
                         ? "bg-primary/10 text-primary"
                         : "text-text-muted hover:bg-surface-2 hover:text-text-main"
@@ -227,7 +212,7 @@ export default function Sidebar({ onClose }) {
                   href={COMBINED_WEB_ITEM.href}
                   onClick={onClose}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-1 rounded-lg transition-all group",
+                    "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all group",
                     pathname.startsWith(COMBINED_WEB_ITEM.href)
                       ? "bg-primary/10 text-primary"
                       : "text-text-muted hover:bg-surface-2 hover:text-text-main"
@@ -240,54 +225,14 @@ export default function Sidebar({ onClose }) {
             )}
 
             {systemItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
-                  isActive(item.href)
-                    ? "bg-primary/10 text-primary"
-                    : "text-text-muted hover:bg-surface-2 hover:text-text-main"
-                )}
-              >
-                <span
-                  className={cn(
-                    "material-symbols-outlined text-[18px]",
-                    isActive(item.href) ? "fill-1" : "group-hover:text-primary transition-colors"
-                  )}
-                >
-                  {item.icon}
-                </span>
-                <span className="text-[13px] font-medium">{item.label}</span>
-              </Link>
+              <NavLink key={item.href} item={item} active={isActive(item.href)} onClose={onClose} />
             ))}
 
             {/* Debug items (inside System section, before Settings) */}
             {debugItems.map((item) => {
               const show = item.href !== "/dashboard/translator" || enableTranslator;
               return show ? (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onClose}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
-                    isActive(item.href)
-                      ? "bg-primary/10 text-primary"
-                      : "text-text-muted hover:bg-surface-2 hover:text-text-main"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "material-symbols-outlined text-[18px]",
-                      isActive(item.href) ? "fill-1" : "group-hover:text-primary transition-colors"
-                    )}
-                  >
-                    {item.icon}
-                  </span>
-                  <span className="text-[13px] font-medium">{item.label}</span>
-                </Link>
+                <NavLink key={item.href} item={item} active={isActive(item.href)} onClose={onClose} />
               ) : null;
             })}
 
@@ -295,7 +240,7 @@ export default function Sidebar({ onClose }) {
             <button
               onClick={() => setShowRemoteModal(true)}
               className={cn(
-                "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group w-full",
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all group w-full",
                 "text-text-muted hover:bg-surface-2 hover:text-text-main"
               )}
             >
@@ -312,7 +257,7 @@ export default function Sidebar({ onClose }) {
               rel="noreferrer"
               onClick={onClose}
               className={cn(
-                "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group w-full",
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all group w-full",
                 "text-text-muted hover:bg-surface-2 hover:text-text-main"
               )}
             >
@@ -323,26 +268,7 @@ export default function Sidebar({ onClose }) {
             </a>
 
             {/* Settings */}
-            <Link
-              href="/dashboard/profile"
-              onClick={onClose}
-              className={cn(
-                "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
-                isActive("/dashboard/profile")
-                  ? "bg-primary/10 text-primary"
-                  : "text-text-muted hover:bg-surface-2 hover:text-text-main"
-              )}
-            >
-              <span
-                className={cn(
-                  "material-symbols-outlined text-[18px]",
-                  isActive("/dashboard/profile") ? "fill-1" : "group-hover:text-primary transition-colors"
-                )}
-              >
-                settings
-              </span>
-              <span className="text-[13px] font-medium">Settings</span>
-            </Link>
+            <NavLink item={{ href: "/dashboard/profile", label: "Settings", icon: "settings" }} active={isActive("/dashboard/profile")} onClose={onClose} />
           </div>
         </nav>
 
@@ -397,6 +323,48 @@ export default function Sidebar({ onClose }) {
 Sidebar.propTypes = {
   onClose: PropTypes.func,
 };
+
+/* Small labelled group header used inside the nav */
+function SectionLabel({ children }) {
+  return (
+    <p className="px-3 mb-1.5 mt-1 text-[11px] font-semibold uppercase tracking-widest text-text-muted/50">
+      {children}
+    </p>
+  );
+}
+
+/* Nav link row with active indicator bar */
+function NavLink({ item, active, onClose }) {
+  return (
+    <Link
+      href={item.href}
+      onClick={onClose}
+      className={cn(
+        "relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all group",
+        active
+          ? "bg-primary/10 text-primary"
+          : "text-text-muted hover:bg-surface-2 hover:text-text-main"
+      )}
+    >
+      {/* Active indicator bar */}
+      <span
+        className={cn(
+          "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[18px] rounded-full bg-primary transition-opacity",
+          active ? "opacity-100" : "opacity-0 group-hover:opacity-40"
+        )}
+      />
+      <span
+        className={cn(
+          "material-symbols-outlined text-[18px]",
+          active ? "fill-1" : "group-hover:text-primary transition-colors"
+        )}
+      >
+        {item.icon}
+      </span>
+      <span className="text-[13px] font-medium">{item.label}</span>
+    </Link>
+  );
+}
 
 function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopyAndShutdown, onCancel, countdown, isDisconnected }) {
   const isCountingDown = countdown > 0;
