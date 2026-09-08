@@ -1,0 +1,37 @@
+name: UI Smoke
+
+# Lightweight UI regression gate: build + render smoke against the app shell.
+# Kept deliberately cheap — full E2E/unit suites run via the project's own
+# vitest baseline (`tests/__baseline__/verify-no-regression.mjs`).
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Start server
+        run: |
+          PORT=20128 HOSTNAME=127.0.0.1 nohup node custom-server.js --port 20128 &
+          npx wait-on http://127.0.0.1:20128/login --timeout 60000
+
+      - name: Smoke check app shell
+        run: |
+          curl -sf -o /dev/null http://127.0.0.1:20128/login
+          curl -sf -o /dev/null http://127.0.0.1:20128/
