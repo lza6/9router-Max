@@ -113,3 +113,20 @@ prepareGateway();
 runBuilder();
 copyGatewayModules();
 verify();
+
+// NSIS installer + blockmap + latest.yml — must run AFTER copyGatewayModules
+// because electron-builder rebuilds win-unpacked and wipes app/node_modules.
+step("5/5  Build NSIS installer (after node_modules copy)");
+const nsis = spawnSync("cmd.exe", ["/c", "set PATH=%SystemRoot%\\System32\\WindowsPowerShell\\v1.0;%PATH% && npx.cmd electron-builder --win nsis --publish never"], {
+  cwd: ELECTRON_DIR,
+  stdio: "inherit",
+  env: { ...process.env },
+});
+if (nsis.status !== 0) throw new Error("NSIS build failed");
+
+// Re-copy gateway node_modules into the packaged win-unpacked that NSIS just
+// rebuilt (it wiped app/node_modules).
+copyGatewayModules();
+console.log("✅ Desktop build complete: win-unpacked + NSIS + blockmap + latest.yml");
+console.log("   → release/win-unpacked/9Router.exe (double-click)");
+console.log("   → release/9Router-Setup-*.exe (installer / auto-update)");
