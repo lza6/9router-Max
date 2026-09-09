@@ -10,6 +10,14 @@ const path = require("path");
 const fs = require("fs");
 const net = require("net");
 
+// Isolate desktop user data from the web/CLI install (which may already have a
+// password set). Fresh desktop installs therefore default to password 123456.
+try {
+  const base = path.join(app.getPath("userData"), "desktop");
+  app.setPath("userData", base);
+} catch { /* ignore — some platforms restrict setPath pre-ready */ }
+const DESKTOP_DATA_DIR = process.env.NINEROUTER_DESKTOP_DATA_DIR || path.join(app.getPath("userData"), "desktop", "data");
+
 const DEFAULT_PORT = 20128;
 const APP_NAME = "9Router";
 const PREF = path.join(app.getPath("userData"), "prefs.json");
@@ -186,6 +194,7 @@ function startServer() {
       PORT: String(port),
       HOSTNAME: "127.0.0.1",
       NEXT_DIST_DIR: ".next-b",
+      DATA_DIR: DESKTOP_DATA_DIR,
     };
     const entry = path.join(serverDir, "custom-server.js");
     // Packaged: launch the gateway through Electron's built-in Node (utilityProcess)
