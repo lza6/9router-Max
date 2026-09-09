@@ -21,6 +21,7 @@ const DESKTOP_DATA_DIR = process.env.NINEROUTER_DESKTOP_DATA_DIR || path.join(ap
 
 const DEFAULT_PORT = 20128;
 const APP_NAME = "9Router";
+const APP_VERSION = require(path.join(__dirname, "package.json")).version || "0.0.0";
 const PREF = path.join(app.getPath("userData"), "prefs.json");
 let mainWindow = null;
 let tray = null;
@@ -175,6 +176,14 @@ async function bootGateway() {
     console.log(`[9Router] gateway listening on port ${port}`);
   } catch (e) {
     console.error("[9Router] gateway boot error:", e && e.message ? e.message : e);
+    // Retry once after a short delay (transient EADDRINUSE / slow start).
+    try {
+      await new Promise((r) => setTimeout(r, 2500));
+      const port = await ensureRunning();
+      console.log(`[9Router] gateway retry OK on port ${port}`);
+    } catch (e2) {
+      console.error("[9Router] gateway retry failed:", e2 && e2.message ? e2.message : e2);
+    }
   }
 }
 
@@ -273,6 +282,8 @@ function openPanel() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.loadURL(url);
     mainWindow.show();
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
     return;
   }
   mainWindow = new BrowserWindow({
@@ -280,6 +291,7 @@ function openPanel() {
     height: 900,
     minWidth: 960,
     minHeight: 640,
+    show: false, // avoid white flash; show on ready-to-show
     autoHideMenuBar: true,
     icon: path.join(__dirname, "assets", "icon.png"),
     webPreferences: {
@@ -287,8 +299,36 @@ function openPanel() {
       contextIsolation: true,
     },
   });
+  mainWindow.once("ready-to-show", () => mainWindow.show());
   mainWindow.loadURL(url);
   mainWindow.on("closed", () => { mainWindow = null; });
+}
+
+// Manual update check (tray / menu): force check now and surface result.
+function checkForUpdatesNow() {
+  try {
+    autoUpdater.checkForUpdates().then((r) => {
+      if (!r || !r.updateInfo) return dialog.showMessageBoxSync({ type: "info", title: "检查更新", message: "已是最新版本。" });
+      // update-available handler will download + prompt.
+      dialog.showMessageBoxSync({ type: "info", title: "检查更新", message: `发现新版本 ${r.updateInfo.version}，正在后台下载…` });
+    }).catch((e) => {
+      dialog.showMessageBoxSync({ type: "error", title: "检查更新", message: `检查失败：${e && e.message}` });
+    });
+  } catch (e) {
+    dialog.showMessageBoxSync({ type: "error", title: "检查更新", message: `检查失败：${e && e.message}` });
+  }
+}
+
+function showAbout() {
+  const cp = require("child_process");
+  let nodeVer = "n/a", electronVer = "n/a";
+  try { nodeVer = process.versions.node; } catch {}
+  try { electronVer = process.versions.electron; } catch {}
+  dialog.showMessageBoxSync({
+    type: "info",
+    title: "关于 9Router",
+    message: `9Router Desktop v${APP_VERSION}\n本地 AI 路由网关\n\n数据目录：${DESKTOP_DATA_DIR}\n端口：${prefs.port || DEFAULT_PORT}\nNode ${nodeVer} · Electron ${electronVer}\n\n更新源：${process.env.NINEROUTER_UPDATE_URL ? "自定义" : "GitHub Releases (lza6/9router-Max)"}`,
+  });
 }
 
 function setupAutoUpdate() {
@@ -337,8 +377,10 @@ function setupTray() {
     { type: "separator" },
     { label: "启动服务", click: async () => { await ensureRunning(); openPanel(); } },
     { label: "停止服务", click: async () => { await stopServer(); } },
+    { label: "检查更新", click: checkForUpdatesNow },
     { label: "开机自启", type: "checkbox", checked: prefs.autostart, click: (item) => { prefs.autostart = item.checked; savePrefs(prefs); setAutoStart(item.checked); } },
     { type: "separator" },
+    { label: "关于", click: showAbout },
     { label: "退出", click: () => { isQuitting = true; app.quit(); } },
   ]);
   tray.setToolTip("9Router — AI Gateway");
