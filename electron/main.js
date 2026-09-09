@@ -258,6 +258,17 @@ async function ensureRunning() {
 
 function openPanel() {
   const url = `http://127.0.0.1:${prefs.port || DEFAULT_PORT}/dashboard`;
+  // Desktop default to Simplified Chinese when no locale cookie is set yet.
+  try {
+    const ses = require("electron").session.defaultSession;
+    ses.cookies.set({
+      url: `http://127.0.0.1:${prefs.port || DEFAULT_PORT}`,
+      name: "locale",
+      value: "zh-CN",
+      domain: "127.0.0.1",
+      path: "/",
+    });
+  } catch { /* cookies are best-effort */ }
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.loadURL(url);
     mainWindow.show();
