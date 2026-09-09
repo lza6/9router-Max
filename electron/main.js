@@ -4,7 +4,7 @@
 // and adds a system tray with start/stop/open/autostart controls.
 "use strict";
 
-const { app, BrowserWindow, Tray, Menu, dialog, nativeImage, utilityProcess } = require("electron");
+const { app, BrowserWindow, Tray, Menu, dialog, nativeImage, utilityProcess, Notification } = require("electron");
 const { spawn, exec } = require("child_process");
 const path = require("path");
 const fs = require("fs");
@@ -27,6 +27,25 @@ let mainWindow = null;
 let tray = null;
 let serverChild = null;
 let isQuitting = false;
+let hasInstanceLock = false;
+
+// 1) Single-instance lock — only one desktop instance keeps tray+gateway alive.
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  // Second instance: focus the existing window then quit.
+  app.quit();
+} else {
+  hasInstanceLock = true;
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    } else {
+      openPanel();
+    }
+  });
+}
 
 // Allow CLI override: `electron . --port 20140` (kept for isolated dev/E2E runs)
 function cliPort() {
@@ -254,6 +273,39 @@ function stopServer() {
   });
 }
 
+// 3) Port-conflict handling: if the preferred port is occupied by a foreign
+// process (not our gateway), kill that process and take the port. This keeps
+// the app on its stable URL instead of silently switching ports.
+function killPortOwner(port) {
+  return new Promise((resolve) => {
+    let cmd = "";
+    if (process.platform === "win32") {
+      cmd = `netstat -ano | findstr "LISTENING" | findstr ":${port} "`;
+    } else {
+      cmd = `lsof -ti tcp:${port}`;
+    }
+    exec(cmd, (err, stdout) => {
+      if (err || !stdout) return resolve(false);
+      // Extract PIDs (last column on Windows, one per line on Unix).
+      const pids = [...new Set(
+        String(stdout).split(/\r?\n/)
+          .map((l) => l.trim().split(/\s+/).pop())
+          .filter((p) => p && /^\d+$/.test(p))
+      )];
+      for (const pid of pids) {
+        try {
+          if (process.platform === "win32") {
+            exec(`taskkill /F /PID ${pid}`, () => {});
+          } else {
+            process.kill(Number(pid), "SIGKILL");
+          }
+        } catch { /* ignore */ }
+      }
+      setTimeout(resolve, 500, true);
+    });
+  });
+}
+
 async function ensureRunning() {
   const port = prefs.port || DEFAULT_PORT;
   const alreadyUp = await new Promise((r) => {
@@ -262,6 +314,9 @@ async function ensureRunning() {
     s.once("error", () => r(false));
   });
   if (alreadyUp) return port;
+  // Not up: try to free the port (kill any foreign listener) before spawning.
+  const freed = await killPortOwner(port);
+  if (freed) console.log(`[9Router] freed port ${port} from another process`);
   await startServer();
   return port;
 }
@@ -331,6 +386,53 @@ function showAbout() {
   });
 }
 
+// 5) Boot notification: inform the user once the gateway is listening.
+let bootNotified = false;
+function notifyGatewayReady(port) {
+  if (bootNotified || !Notification.isSupported()) return;
+  bootNotified = true;
+  try {
+    const n = new Notification({
+      title: "9Router 已就绪",
+      body: `本地网关已在 http://127.0.0.1:${port} 运行。`,
+      icon: path.join(__dirname, "assets", "icon.png"),
+    });
+    n.on("click", openPanel);
+    n.show();
+  } catch { /* notifications are best-effort */ }
+}
+
+// Simple splash window shown while the gateway boots (avoids blank white).
+let splashWindow = null;
+function showSplash() {
+  if (process.env.ELECTRON_HEADLESS === "1") return;
+  try {
+    splashWindow = new BrowserWindow({
+      width: 360,
+      height: 240,
+      frame: false,
+      resizable: false,
+      alwaysOnTop: true,
+      center: true,
+      backgroundColor: "#1a1a1a",
+      webPreferences: { nodeIntegration: false, contextIsolation: true },
+    });
+    splashWindow.loadURL(
+      "data:text/html;charset=utf-8," + encodeURIComponent(
+        `<!doctype html><html><body style="margin:0;background:#1a1a1a;color:#fff;font-family:system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh">
+        <div style="font-size:40px">🌐</div>
+        <div style="margin-top:14px;font-size:16px;font-weight:600">9Router</div>
+        <div style="margin-top:6px;font-size:12px;color:#9ca3af">本地网关启动中…</div>
+        </body></html>`
+      )
+    );
+  } catch { splashWindow = null; }
+}
+function hideSplash() {
+  try { if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close(); } catch {}
+  splashWindow = null;
+}
+
 function setupAutoUpdate() {
   // Background auto-update: check GitHub Releases on a schedule and notify.
   try {
@@ -386,6 +488,7 @@ function setupTray() {
   tray.setToolTip("9Router — AI Gateway");
   tray.setContextMenu(menu);
   tray.on("double-click", openPanel);
+  tray.on("click", openPanel);
 }
 
 function setAutoStart(enabled) {
@@ -393,7 +496,9 @@ function setAutoStart(enabled) {
 }
 
 app.whenReady().then(async () => {
+  if (!hasInstanceLock) return; // second instance already quit above
   try {
+    showSplash();
     setupTray();
     setupAutoUpdate();
     // Resolve gateway node_modules from bundled archive if packaged.
@@ -403,6 +508,8 @@ app.whenReady().then(async () => {
     }
     // Start the gateway first (utilityProcess needs app ready).
     await bootGateway();
+    notifyGatewayReady(prefs.port || DEFAULT_PORT);
+    hideSplash();
     // Install trusted self-signed root cert (Windows user store), then try HTTPS.
     if (prefs.https !== false) {
       try {
@@ -423,6 +530,7 @@ app.whenReady().then(async () => {
     }
     console.log("[9Router] tray + panel ready");
   } catch (e) {
+    hideSplash();
     console.error("[9Router] startup error:", e && e.message ? e.message : e);
   }
 });
