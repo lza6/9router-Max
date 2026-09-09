@@ -22,6 +22,9 @@ jobs:
           $env:NEXT_DIST_DIR=".next-b"
           $env:NEXT_TRACING_ROOT_MODE="workspace"
           npm run build
+      - name: Install electron deps (with mirror fallback)
+        run: |
+          npm ci --prefix electron
       - name: Build desktop package
         run: |
           node scripts/build-desktop-win.cjs
