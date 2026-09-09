@@ -1,0 +1,48 @@
+name: Build & Release 9Router Desktop
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-desktop:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build Next standalone
+        run: |
+          npm ci
+          $env:NEXT_DIST_DIR=".next-b"
+          $env:NEXT_TRACING_ROOT_MODE="workspace"
+          npm run build
+      - name: Build desktop package
+        run: |
+          node scripts/build-desktop-win.cjs
+      - name: Build NSIS installer + blockmap (publish Never → app-update.yml)
+        working-directory: electron
+        env:
+          PATH: "$env:WINDIR\System32\WindowsPowerShell\v1.0;%PATH%"
+        run: npx.cmd electron-builder --win nsis --publish never
+      - name: Rename artifacts to hyphens
+        shell: pwsh
+        run: |
+          Get-ChildItem release -Filter "9Router Setup *.exe" | ForEach-Object {
+            $new = $_.Name -replace " ", "-"
+            Move-Item -Force $_.FullName (Join-Path $_.Directory $new)
+            if (Test-Path "$($_.FullName).blockmap") {
+              Move-Item -Force "$($_.FullName).blockmap" "$(Join-Path $_.Directory ($new + '.blockmap'))"
+            }
+          }
+      - name: Upload release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ github.ref_name }}" release/*.exe release/latest.yml release/*.blockmap --repo ${{ github.repository }} --title "9Router Desktop ${{ github.ref_name }}" --notes "Automated desktop release. Download & run the installer — auto-update will keep you on the latest."

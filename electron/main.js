@@ -9,6 +9,7 @@ const { spawn, exec } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const net = require("net");
+const { autoUpdater } = require("electron-updater");
 
 // Isolate desktop user data from the web/CLI install (which may already have a
 // password set). Fresh desktop installs therefore default to password 123456.
@@ -290,6 +291,44 @@ function openPanel() {
   mainWindow.on("closed", () => { mainWindow = null; });
 }
 
+function setupAutoUpdate() {
+  // Background auto-update: check GitHub Releases on a schedule and notify.
+  try {
+    autoUpdater.autoDownload = false; // we download in background then prompt
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.on("update-available", (info) => {
+      console.log(`[9Router] update available: ${info.version}`);
+      autoUpdater.downloadUpdate().catch((e) => console.error("[9Router] update dl failed:", e.message));
+    });
+    autoUpdater.on("update-downloaded", (info) => {
+      console.log(`[9Router] update downloaded ${info.version}, prompting restart`);
+      const choice = dialog.showMessageBoxSync({
+        type: "info",
+        buttons: ["立即重启安装", "稍后"],
+        defaultId: 0,
+        title: "9Router 更新就绪",
+        message: `新版本 ${info.version} 已下载完成，重启后自动安装。`,
+      });
+      if (choice === 0) {
+        isQuitting = true;
+        try { if (serverChild) serverChild.kill(); } catch {}
+        autoUpdater.quitAndInstall(false, true);
+      }
+    });
+    autoUpdater.on("error", (e) => console.error("[9Router] updater error:", e && e.message));
+    // Optional override for testing/mirroring: NINEROUTER_UPDATE_URL points to a
+    // custom feed (e.g. a local static server or a China-friendly mirror).
+    if (process.env.NINEROUTER_UPDATE_URL) {
+      autoUpdater.setFeedURL({ provider: "generic", url: process.env.NINEROUTER_UPDATE_URL });
+    }
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch((e) => console.error("[9Router] updater check failed:", e && e.message));
+    }, 8000); // give the gateway/window time to boot first
+  } catch (e) {
+    console.error("[9Router] auto-update init failed:", e.message);
+  }
+}
+
 function setupTray() {
   const icon = nativeImage.createFromPath(path.join(__dirname, "assets", "icon.png"));
   tray = new Tray(icon.resize({ width: 16, height: 16 }));
@@ -314,6 +353,7 @@ function setAutoStart(enabled) {
 app.whenReady().then(async () => {
   try {
     setupTray();
+    setupAutoUpdate();
     // Resolve gateway node_modules from bundled archive if packaged.
     if (isPacked) {
       const ok = await ensureGatewayModules();
