@@ -48,4 +48,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${{ github.ref_name }}" release/*.exe release/latest.yml release/*.blockmap --repo ${{ github.repository }} --title "9Router Desktop ${{ github.ref_name }}" --notes "Automated desktop release. Download & run the installer — auto-update will keep you on the latest."
+          # github.ref_name 对 tag 触发而言**已经**是完整 tag 名（如 v0.5.79）。
+          # 这里若再拼一个 "v" 前缀会得到 vv0.5.79 并在该 tag 上另建一个 release。
+          gh release create "${{ github.ref_name }}" release/*.exe release/latest.yml release/*.blockmap --repo ${{ github.repository }} --title "9Router Desktop ${{ github.ref_name }}" --notes "Automated desktop release for ${{ github.ref_name }}. Download & run the installer — auto-update will keep you on the latest. Full changelog: https://github.com/${{ github.repository }}/blob/master/CHANGELOG.md"
