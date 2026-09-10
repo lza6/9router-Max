@@ -27,7 +27,17 @@ const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
 const ELECTRON_DIR = path.join(ROOT, "electron");
-const STANDALONE = path.join(ROOT, ".next-b", "standalone");
+const STANDALONE_BASE = path.join(ROOT, ".next-b", "standalone");
+// Workspace tracing may nest the app under a project dir (standalone/<pkg>/).
+function resolveStandalone() {
+  if (fs.existsSync(path.join(STANDALONE_BASE, "server.js"))) return STANDALONE_BASE;
+  const nested = path.join(STANDALONE_BASE, "9router-Max");
+  if (fs.existsSync(path.join(nested, "server.js"))) return nested;
+  const nestedApp = path.join(STANDALONE_BASE, "app");
+  if (fs.existsSync(path.join(nestedApp, "server.js"))) return nestedApp;
+  return STANDALONE_BASE;
+}
+const STANDALONE = resolveStandalone();
 const GATEWAY = path.join(ELECTRON_DIR, "gateway");
 const RELEASE = path.join(ROOT, "release");
 const WIN_UNPACKED = path.join(RELEASE, "win-unpacked");

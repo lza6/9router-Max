@@ -258,8 +258,19 @@ function attachLogs(child) {
   if (child.stdout) child.stdout.on("data", (d) => process.stdout.write(`[gw] ${d}`));
   if (child.stderr) child.stderr.on("data", (d) => process.stderr.write(`[gw] ${d}`));
   child.on("exit", (code) => {
-    if (!isQuitting) console.error(`[9Router] gateway exited: ${code}`);
+    if (isQuitting) { serverChild = null; return; }
+    console.error(`[9Router] gateway exited unexpectedly (${code}); restarting in 2s`);
     serverChild = null;
+    // Auto-relaunch the gateway after an unexpected crash (not on quit).
+    setTimeout(async () => {
+      try {
+        const port = await ensureRunning();
+        console.log(`[9Router] gateway restarted on port ${port}`);
+        notifyGatewayReady(port);
+      } catch (e) {
+        console.error("[9Router] gateway auto-restart failed:", e && e.message ? e.message : e);
+      }
+    }, 2000);
   });
 }
 
@@ -477,7 +488,7 @@ function setupTray() {
   const menu = Menu.buildFromTemplate([
     { label: "打开面板", click: openPanel },
     { type: "separator" },
-    { label: "启动服务", click: async () => { await ensureRunning(); openPanel(); } },
+    { label: "启动服务", click: async () => { await ensureRunning(); openPanel(); notifyGatewayReady(prefs.port || DEFAULT_PORT); } },
     { label: "停止服务", click: async () => { await stopServer(); } },
     { label: "检查更新", click: checkForUpdatesNow },
     { label: "开机自启", type: "checkbox", checked: prefs.autostart, click: (item) => { prefs.autostart = item.checked; savePrefs(prefs); setAutoStart(item.checked); } },
