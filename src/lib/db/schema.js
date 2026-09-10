@@ -3,7 +3,7 @@
 // pre-change safety backup in migrate.js: when the stored version is lower,
 // one lightweight DB backup is taken before applying schema changes. Forgetting
 // to bump only skips that backup — it does NOT break the additive auto-sync.
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const PRAGMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -151,6 +151,61 @@ export const TABLES = {
       "CREATE INDEX IF NOT EXISTS idx_rd_model ON requestDetails(model)",
       "CREATE INDEX IF NOT EXISTS idx_rd_conn ON requestDetails(connectionId)",
     ],
+  },
+
+  // ── P0-1 任务/流水线：跨能力编排的地基 ──────────────────────────────
+  // 一次"做一件事"（生成一条视频 / 一套 PPT / 一批文案）= 一条 pipelineRuns，
+  // 其阶段产物落在 pipelineArtifacts。长任务因此可持久化、可列举、可断点恢复。
+  pipelineRuns: {
+    columns: {
+      id: "TEXT PRIMARY KEY",
+      kind: "TEXT NOT NULL",          // 流水线类型：video | ppt | doc | ecom …
+      status: "TEXT NOT NULL",        // pending | running | completed | failed | cancelled
+      stage: "TEXT",                  // 当前阶段名（人类可读，用于进度语义化）
+      stageIndex: "INTEGER",          // 当前阶段序号（0-based）
+      stageTotal: "INTEGER",          // 阶段总数
+      title: "TEXT",
+      input: "TEXT",                  // JSON：编排入参
+      error: "TEXT",
+      createdAt: "TEXT NOT NULL",
+      updatedAt: "TEXT NOT NULL",
+      finishedAt: "TEXT",
+    },
+    indexes: [
+      "CREATE INDEX IF NOT EXISTS idx_pr_created ON pipelineRuns(createdAt DESC)",
+      "CREATE INDEX IF NOT EXISTS idx_pr_status ON pipelineRuns(status)",
+      "CREATE INDEX IF NOT EXISTS idx_pr_kind ON pipelineRuns(kind)",
+    ],
+  },
+
+  pipelineArtifacts: {
+    columns: {
+      id: "TEXT PRIMARY KEY",
+      runId: "TEXT NOT NULL",
+      stage: "TEXT",                  // 产出该产物的阶段
+      kind: "TEXT",                   // text | json | url | file | markdown
+      name: "TEXT",
+      content: "TEXT",                // 小产物内联；大产物存路径/URL
+      meta: "TEXT",                   // JSON：尺寸/耗时/来源等
+      createdAt: "TEXT NOT NULL",
+    },
+    indexes: ["CREATE INDEX IF NOT EXISTS idx_pa_run ON pipelineArtifacts(runId)"],
+  },
+
+  // ── P0-2 精确响应缓存（默认关闭；键含 connectionId 防跨账号串答案）──
+  responseCache: {
+    columns: {
+      key: "TEXT PRIMARY KEY",        // sha256(connectionId ‖ provider ‖ model ‖ 规范化 body)
+      provider: "TEXT",
+      model: "TEXT",
+      connectionId: "TEXT",
+      response: "TEXT NOT NULL",      // 完整响应体 JSON
+      createdAt: "TEXT NOT NULL",
+      expiresAt: "TEXT",
+      hits: "INTEGER",
+      lastHitAt: "TEXT",
+    },
+    indexes: ["CREATE INDEX IF NOT EXISTS idx_rc_expires ON responseCache(expiresAt)"],
   },
 };
 

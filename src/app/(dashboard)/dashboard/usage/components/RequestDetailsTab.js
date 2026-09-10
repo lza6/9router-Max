@@ -261,13 +261,14 @@ export default function RequestDetailsTab() {
                 <th className="text-right p-4 text-sm font-semibold text-text-main">Output Tokens</th>
                 <th className="text-left p-4 text-sm font-semibold text-text-main">Latency</th>
                 <th className="text-left p-4 text-sm font-semibold text-text-main">Route</th>
+                <th className="text-left p-4 text-sm font-semibold text-text-main">Trace</th>
                 <th className="text-center p-4 text-sm font-semibold text-text-main">Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="9" className="p-8 text-center text-text-muted">
+                  <td colSpan="11" className="p-8 text-center text-text-muted">
                     <div className="flex items-center justify-center gap-2">
                       <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
                       Loading...
@@ -276,7 +277,7 @@ export default function RequestDetailsTab() {
                 </tr>
               ) : details.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="p-8 text-center text-text-muted">
+                  <td colSpan="11" className="p-8 text-center text-text-muted">
                     No request details found
                   </td>
                 </tr>
@@ -324,6 +325,29 @@ export default function RequestDetailsTab() {
                         <span className="text-xs text-text-muted">—</span>
                       )}
                     </td>
+                    <td className="max-w-[160px] p-4">
+                      {/* P1-2 执行轨迹：同一次客户端请求的多次尝试共享一个 traceId，
+                          attemptIndex > 0 即为组合回退/多账号重试的后续尝试。 */}
+                      {detail.traceId ? (
+                        detail.attemptIndex > 0 ? (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-600 dark:text-amber-400"
+                            title={`同一次请求的第 ${detail.attemptIndex + 1} 次尝试\ntraceId: ${detail.traceId}`}
+                          >
+                            重试 #{detail.attemptIndex}
+                          </span>
+                        ) : (
+                          <span
+                            className="truncate font-mono text-[11px] text-text-muted"
+                            title={`traceId: ${detail.traceId}（本次请求的首个尝试，可在详情里按此 id 关联重试链）`}
+                          >
+                            {String(detail.traceId).slice(0, 8)}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-xs text-text-muted">—</span>
+                      )}
+                    </td>
                     <td className="p-4 text-center">
                       <Button
                         variant="outline"
@@ -361,6 +385,35 @@ export default function RequestDetailsTab() {
       >
         {selectedDetail && (
           <div className="space-y-6">
+            {/* P1-2 执行轨迹：把「这次请求为什么重试过」显式化 */}
+            {selectedDetail.traceId && (
+              <div className="rounded-lg border border-black/5 dark:border-white/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-[18px] text-text-muted">timeline</span>
+                  <span className="font-semibold text-sm text-text-main">执行轨迹</span>
+                  {selectedDetail.attemptIndex > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      第 {selectedDetail.attemptIndex + 1} 次尝试
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+                  <div className="sm:col-span-2">
+                    <span className="text-text-muted block text-xs">Trace ID（同一次客户端请求共享）</span>
+                    <span className="font-mono text-text-main break-all">{selectedDetail.traceId}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted block text-xs">尝试序号</span>
+                    <span className="font-mono text-text-main">
+                      {Number.isFinite(selectedDetail.attemptIndex) ? selectedDetail.attemptIndex : 0}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-text-muted">
+                  同一个 Trace ID 的多条记录属于同一次客户端请求。序号 &gt; 0 说明前一次尝试失败后回退到了下一个账号或模型。
+                </p>
+              </div>
+            )}
             {selectedDetail.route_reason && (
               <div className="rounded-lg border border-black/5 dark:border-white/5 p-4">
                 <div className="flex items-center gap-2 mb-2">

@@ -117,6 +117,12 @@ async function flushToDatabase() {
             response: truncateField(item.response, config.maxJsonSize),
             pxpipe: item.pxpipe || undefined,
             route_reason: item.route_reason || undefined,
+            // P1-2 执行轨迹：白名单是显式的，漏加就会静默丢字段。
+            traceId: item.traceId || undefined,
+            attemptIndex: Number.isFinite(item.attemptIndex) ? item.attemptIndex : undefined,
+            // P0-2 缓存命中标记（命中上游未被调用）
+            cached: item.cached === true ? true : undefined,
+            cacheKey: item.cacheKey || undefined,
           };
 
           db.run(

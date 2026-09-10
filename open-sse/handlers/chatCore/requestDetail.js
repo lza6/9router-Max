@@ -79,6 +79,11 @@ export function buildRequestDetail(base, overrides = {}) {
     pxpipe: base.pxpipe || undefined,
     status: base.status || "success",
     route_reason: base.route_reason, // 路由理由（黑匣子全开：为什么选这个 provider/model/format）
+    // 执行轨迹（P1-2）：一次客户端请求 = 一个 traceId；组合回退/多账号重试每次尝试 attemptIndex 递增。
+    // 前端据此把同 trace 的多条 requestDetails 组成树/时间线："这次为什么重试了 3 次才成功"。
+    // 二者均可为 undefined —— 老调用方不传时行为与改动前逐字段一致。
+    traceId: base.traceId || undefined,
+    attemptIndex: Number.isFinite(base.attemptIndex) ? base.attemptIndex : undefined,
     ...overrides
   };
 }

@@ -8,6 +8,7 @@ import { HTTP_STATUS } from "../../config/runtimeConfig.js";
 import { parseSSEToOpenAIResponse } from "./sseToJsonHandler.js";
 import { buildRequestDetail, extractRequestConfig, extractUsageFromResponse, saveUsageStats, formatDoneLine } from "./requestDetail.js";
 import { appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
+import { isCacheEligible, writeCachedClientResponse } from "./responseCache.js";
 import { decloakToolNames } from "../../utils/claudeCloaking.js";
 import { ROLE, RESPONSES_ITEM } from "../../translator/schema/index.js";
 
@@ -281,7 +282,7 @@ export function translateNonStreamingResponse(responseBody, targetFormat, source
 /**
  * Handle non-streaming response from provider.
  */
-export async function handleNonStreamingResponse({ providerResponse, provider, model, sourceFormat, targetFormat, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess, reqLogger, toolNameMap, customToolNames, trackDone, appendLog, pxpipe, reqTag, log, route_reason }) {
+export async function handleNonStreamingResponse({ providerResponse, provider, model, sourceFormat, targetFormat, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess, reqLogger, toolNameMap, customToolNames, trackDone, appendLog, pxpipe, reqTag, log, route_reason, traceId, attemptIndex, responseCacheEnabled = false, responseCacheTtlSeconds }) {
   trackDone();
   const contentType = providerResponse.headers.get("content-type") || "";
   let responseBody;
@@ -386,9 +387,21 @@ export async function handleNonStreamingResponse({ providerResponse, provider, m
     pxpipe,
     status: "success",
     route_reason,
+    traceId, attemptIndex,
   }, { endpoint: clientRawRequest?.endpoint || null })).catch(err => {
     console.error("[RequestDetail] Failed to save:", err.message);
   });
+
+  // ── P0-2 精确响应缓存（写路径，默认关闭）──────────────────────────
+  // 只写「确定性 + 已完成」的客户端响应；失败静默（缓存绝不能影响正常返回）。
+  if (isCacheEligible({ body, stream, enabled: responseCacheEnabled })) {
+    await writeCachedClientResponse({
+      connectionId, provider, model, sourceFormat,
+      body,
+      response: translatedResponse,
+      ttlSeconds: responseCacheTtlSeconds,
+    });
+  }
 
   return {
     success: true,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUserSkills, createUserSkill } from "@/lib/localDb";
-import { skillValidationErrorMessages } from "@/lib/skillValidation";
+import { skillValidationErrorMessages, skillValidationWarnings } from "@/lib/skillValidation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -61,7 +61,11 @@ export async function POST(request) {
     const validationErrors = skillValidationErrorMessages({ description, content });
     if (validationErrors) return badRequest(validationErrors.join("; "));
     const skill = await createUserSkill({ name, description, content, tags });
-    return NextResponse.json({ skill }, { status: 201, headers: NO_STORE_HEADERS });
+    // 表达质量建议（负触发/四要素/输出契约）：非阻断，仅在非空时回给前端展示。
+    const warnings = skillValidationWarnings({ description, content });
+    const payload = { skill };
+    if (warnings.length) payload.warnings = warnings;
+    return NextResponse.json(payload, { status: 201, headers: NO_STORE_HEADERS });
   } catch (error) {
     console.log("Error creating user skill:", error);
     // 业务校验错误（必填/超长）应原样透出给前端；DB 异常收敛为通用错误。

@@ -18,5 +18,9 @@ export {
   getMitmAlias, setMitmAliasAll,
   getPricing, getPricingForModel, updatePricing, resetPricing, resetAllPricing,
   getUserSkills, getUserSkillById, createUserSkill, updateUserSkill, deleteUserSkill, recordSkillUse, rejectSkillUse,
+  createPipelineRun, getPipelineRunById, getPipelineRuns, updatePipelineRun, deletePipelineRun,
+  addPipelineArtifact, getPipelineArtifacts, getResumablePipelineRuns,
+  computeCacheKey, getCachedResponse, setCachedResponse, deleteCachedResponse,
+  clearResponseCache, purgeExpiredCache, getResponseCacheStats,
   exportDb, importDb,
 } from "@/lib/db/index.js";

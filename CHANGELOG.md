@@ -1,3 +1,46 @@
+# v0.5.79 (2026-09-11)
+
+## Features（参考对标三期 — 第一批落地：技能质量 / 日志可查 / 执行轨迹 / 任务模型 / 响应缓存 / 生产线 API）
+
+### P0-3 技能表达质量建议（非阻断）
+- `src/lib/skillValidation.js` 新增 `advisories`（**独立于 issues**，不改动原有 400 语义）：缺「不适用于/不要用于」负触发、缺可绑定要素（Check 怎么验、Stop 失败怎么办）、缺 `## Output` 产出契约。
+- 新增导出 `skillValidationWarnings()`；`POST /api/skills` 在创建成功时把建议以 `warnings` 返回（仅非空时附带，响应形状向后兼容）。
+- 存量技能与既有调用方零影响：`issues` 仍只承载 error/secret（阻断级）。
+
+### P1-3 日志可查询
+- `src/lib/consoleLogBuffer.js`：内部改为结构化 `records{level,text,ts}`（热重载自动从旧 `logs` 迁移），新增 `queryConsoleLogs({q,level,since,limit})` 返回 `matched/returned/truncated/levelCounts`。**不依赖 FTS5**（实测 `sql.js` 回退驱动无 fts5）。
+- `GET /api/console-logs` 支持 `q/level/since/limit`；**无参数时行为与改动前逐字段一致**。
+- 日志页新增过滤条：级别多选（带计数）、关键字过滤、跟随开关、复制筛选结果、清除筛选；并修复死链 `/dashboard/expert` → 指向 `/dashboard/usage`。
+
+### P1-2 执行轨迹（黑匣子再进一步）
+- `buildRequestDetail` 新增可选 `traceId` / `attemptIndex`，经 `chatCore` 与 4 条落库路径（非流式 / 流式 / 强制 SSE→JSON / 上游失败）全程透传。
+- `src/sse/handlers/chat.js` 每次客户端请求生成一个 `traceId`，账号/组合回退时 `attemptIndex++`，据此可还原「这次为什么重试了 N 次」。
+- **修复：`requestDetailsRepo` 的落库白名单是显式的** —— 补上 `traceId/attemptIndex/cached/cacheKey`，否则会被静默丢弃（已加真实 DB 往返测试守护）。
+- Usage 页新增 Trace 列（重试徽章 + traceId 短码）与抽屉「执行轨迹」区块。
+
+### P0-1 任务/流水线数据模型
+- `schema.js` 新增 `pipelineRuns` / `pipelineArtifacts` 两张表，`SCHEMA_VERSION` 1→2（纯追加，走既有声明式自动同步 + 变更前备份，**无需迁移文件**）。
+- `src/lib/db/repos/pipelineRepo.js`：创建/查询/阶段推进（显式 `PIPELINE_STATUSES` 状态机 + 终态自动 `finishedAt`）/产物读写/断点恢复查询。
+
+### P0-2 精确响应缓存（默认关闭）
+- 新增 `responseCache` 表 + `src/lib/db/repos/cacheRepo.js` + `open-sse/handlers/chatCore/responseCache.js`。
+- **缓存键 = sha256(connectionId ‖ provider ‖ model ‖ 规范化 body)** —— 含 `connectionId` 防止多账号串答案；`stableStringify` 保证键顺序无关。
+- **写入白名单**：仅 `temperature===0`（或缺省）、非流式、无 tools/tool_choice、无 tool_choice 的确定性成功响应。任何异常 fail-open。
+- 开关 `RESPONSE_CACHE_ENABLED`（env 优先）/ `settings.responseCacheEnabled`，**默认关闭**；TTL 夹在 60s–7d。
+- 新增 `GET/DELETE /api/cache`（统计 / 清空 / `?purge=expired` 只清过期）。
+
+### P1-4 生产线 API（从「转发一次请求」到「做完一件事」）
+- `src/lib/pipeline/stages.js`：阶段注册表（内置 `doc` 生产线：大纲 → 正文 → 润色 → 校验），LLM 阶段复用统一的 chat 入口（不另造上游通道），校验阶段为**纯本地确定性规则**。
+- `src/lib/pipeline/runner.js`：顺序执行 + **按产物断点恢复（幂等）** + 失败落库（保留已完成阶段产物）+ 阶段进度落库。
+- 新增 `POST/GET /v1/pipelines`、`GET/DELETE /v1/pipelines/{id}`、`POST /v1/pipelines/{id}/resume`；支持 `async:true` 后台推进。
+
+## Verification
+- **零回归（严格 A/B）**：HEAD 基线 `117 failed / 2087 passed` → 含本批 `117 failed / 2193 passed` —— **失败数完全相同**，通过数恰好 +106（= 新增用例数）。
+- **定向单测**：新增 7 个测试文件、106 个用例全绿（技能建议 / 日志查询 / 轨迹落库往返 / 任务模型 / 响应缓存键与 TTL / 旧库升级自动补表 / 生产线执行器）。
+- **真实 HTTP E2E（隔离 DATA_DIR + 独立端口 20199）**：`node tests/e2e/batch-verify.mjs` → **44/44 通过**，覆盖登录、日志过滤、缓存统计、生产线 API 全部分支、4 个 dashboard 页面渲染、既有 `/v1` 回归。
+- **鉴权/转发链差分证明**：同一请求不带 key 失败于 `Missing API key`，带 key 失败点前移到 `No active credentials for provider: openai` —— 证明调用方 API Key 被真实穿透到 provider 解析层，而非被桩短路。
+- **未验证（如实标注）**：`doc` 生产线「真实 provider 返回内容 → 落产物」这一段需要已配置的上游凭据，**未做真实付费调用**，故标记 UNVERIFIED；执行器语义已由本地阶段单测覆盖，链路连通性已由上述差分证明覆盖。
+
 # v0.5.78 (2026-09-09)
 
 ## Features（UI 现代化升级 + Windows 桌面版）

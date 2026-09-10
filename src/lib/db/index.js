@@ -73,6 +73,21 @@ export {
   saveRequestDetail, getRequestDetails, getRequestDetailById, getDistinctProviders,
 } from "./repos/requestDetailsRepo.js";
 
+// P0-1 任务/流水线
+export {
+  PIPELINE_STATUSES,
+  createPipelineRun, getPipelineRunById, getPipelineRuns,
+  updatePipelineRun, deletePipelineRun,
+  addPipelineArtifact, getPipelineArtifacts, getResumablePipelineRuns, toPublicRun,
+} from "./repos/pipelineRepo.js";
+
+// P0-2 精确响应缓存
+export {
+  computeCacheKey, stableStringify,
+  getCachedResponse, setCachedResponse, deleteCachedResponse,
+  clearResponseCache, purgeExpiredCache, getResponseCacheStats,
+} from "./repos/cacheRepo.js";
+
 // Export/import full DB
 export async function exportDb() {
   const db = await getAdapter();

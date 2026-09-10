@@ -26,6 +26,17 @@ import { getProjectIdForConnection } from "open-sse/services/projectId.js";
 import { stripModelContextMarker } from "open-sse/utils/modelMarkers.js";
 
 /**
+ * P0-2 响应缓存开关解析（默认**关闭**）。
+ * 优先级：env RESPONSE_CACHE_ENABLED（显式设置即生效）> settings.responseCacheEnabled > false。
+ * 与 v0.5.74 限流开关同一模式：默认不改变既有行为。
+ */
+function resolveResponseCacheEnabled(settings) {
+  const env = process.env.RESPONSE_CACHE_ENABLED;
+  if (env !== undefined && env !== "") return env.toLowerCase() === "true";
+  return settings?.responseCacheEnabled === true;
+}
+
+/**
  * Handle chat completion request
  * Supports: OpenAI, Claude, Gemini, OpenAI Responses API formats
  * Format detection and translation handled by translator
@@ -47,6 +58,14 @@ export async function handleChat(request, clientRawRequest = null) {
       body,
       headers: Object.fromEntries(request.headers.entries())
     };
+  }
+
+  // P1-2：traceId 必须在**客户端请求**这一层生成一次，并挂在 clientRawRequest 上。
+  // 否则 combo 每换一个成员模型都会重新生成，同一次用户请求会被拆成多条互不相关的 trace，
+  // 与前端「同一次客户端请求共享一个 traceId」的文案不符。
+  if (clientRawRequest && !clientRawRequest.traceId) {
+    clientRawRequest.traceId =
+      globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
   // Claude Code marks a 1M-context request as `<model>[1m]`; the marker matches
   // no combo, alias or provider/model pair, so it must not reach resolution.
@@ -163,8 +182,7 @@ export async function handleChat(request, clientRawRequest = null) {
 /**
  * Handle single model chat request
  */
-async function handleSingleModelChat(body, modelStr, clientRawRequest = null, request = null, apiKey = null) {
-  const modelInfo = await getModelInfo(modelStr);
+async function handleSingleModelChat(body, modelStr, clientRawRequest = null, request = null, apiKey = null) {  const modelInfo = await getModelInfo(modelStr);
 
   // If provider is null, this might be a combo name - check and handle
   if (!modelInfo.provider) {
@@ -230,6 +248,11 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   let lastError = null;
   let lastStatus = null;
 
+  // P1-2：一次客户端请求 = 一个 traceId（在 handleChat 顶层生成并挂在 clientRawRequest 上）；
+  // 组合回退 / 多账号重试 = attemptIndex 递增。两者一起构成「这次为什么重试了 N 次」。
+  const traceId = clientRawRequest?.traceId || globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  let attemptIndex = 0;
+
   while (true) {
     const credentials = await getProviderCredentials(provider, excludeConnectionIds, model);
 
@@ -274,6 +297,8 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       connectionId: credentials.connectionId,
       userAgent,
       apiKey,
+      traceId,
+      attemptIndex,
       ccFilterNaming: !!chatSettings.ccFilterNaming,
       rtkEnabled: !!chatSettings.rtkEnabled,
       headroomEnabled: !!chatSettings.headroomEnabled,
@@ -287,6 +312,10 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       pxpipeEnabled: !!chatSettings.pxpipeEnabled,
       pxpipeMinChars: chatSettings.pxpipeMinChars,
       pxpipeTimeoutMs: chatSettings.pxpipeTimeoutMs,
+      // P0-2 精确响应缓存（默认关闭）。env RESPONSE_CACHE_ENABLED 优先于 UI 开关，
+      // 便于运维在不改 DB 的情况下统一开关；TTL 走 RESPONSE_CACHE_TTL_SECONDS。
+      responseCacheEnabled: resolveResponseCacheEnabled(chatSettings),
+      responseCacheTtlSeconds: Number(process.env.RESPONSE_CACHE_TTL_SECONDS) || chatSettings.responseCacheTtlSeconds,
       // Lazily warms the in-process module on first use; null when not installed (fail-open)
       pxpipeTransform: chatSettings.pxpipeEnabled ? await getPxpipeTransform() : null,
       onPxpipeEvent: appendPxpipeEvent,
@@ -331,6 +360,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       excludeConnectionIds.add(credentials.connectionId);
       lastError = result.error;
       lastStatus = result.status;
+      attemptIndex += 1; // P1-2：同一次客户端请求的下一次尝试
       continue;
     }
 
